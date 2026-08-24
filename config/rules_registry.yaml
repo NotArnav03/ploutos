@@ -1,0 +1,320 @@
+# Rules registry: every bound the deterministic policy engine enforces.
+#
+# The LLM never evaluates these. It receives the permitted action set that
+# results from them. Each rule_id appears verbatim in the audit trail, so any
+# blocked action can be traced back to the clause that blocked it.
+#
+# VERIFICATION DISCIPLINE
+#   verification.status: verified   -> either definitional (follows from our own
+#                                      model) or backed by a primary source in
+#                                      source_url that matches the parameter
+#                        unverified -> the shape is realistic, THE NUMBER IS OURS
+#
+#   Nothing in the README, the video, or the submission may describe this system
+#   as compliant with any regulation while a rule it leans on is `unverified`.
+#   The honest claim is: "compliance-bounded by a configurable rules registry
+#   modeled on published e-mandate guidance." Rules are enforced either way;
+#   verification governs what we may CLAIM, not what we enforce.
+version: 1
+
+defaults:
+  timezone: Asia/Kolkata
+
+rules:
+  # ---------- eligibility: may we present a debit at all ----------
+  - id: MANDATE_ACTIVE_REQUIRED
+    kind: eligibility
+    severity: critical
+    harm_metric: true
+    summary: No debit may be presented unless the mandate is active.
+    params: {}
+    verification:
+      status: verified
+      source_url: null
+      note: Definitional, not regulatory. A revoked mandate is withdrawn authorisation.
+
+  - id: MANDATE_VALIDITY_WINDOW
+    kind: eligibility
+    severity: critical
+    harm_metric: true
+    summary: A debit may not be scheduled for a time after the mandate valid_till.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  - id: MANDATE_CAP_RESPECTED
+    kind: eligibility
+    severity: critical
+    harm_metric: true
+    summary: Debit amount must not exceed the mandate authorised maximum.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  - id: PREDEBIT_NOTICE
+    kind: compliance
+    severity: high
+    harm_metric: true
+    summary: An e-mandate debit requires advance notice served at least N hours before presentment.
+    params:
+      notice_hours: 24
+      applies_to_rails: [upi_autopay, enach]
+    verification:
+      status: unverified
+      source_url: null
+      note: >-
+        24h is OUR parameter. Pre-debit notification is a real requirement for
+        e-mandates; confirm the exact window and its scope against the primary
+        RBI circular before making any compliance claim. Day 9 task.
+
+  - id: AFA_THRESHOLD
+    kind: compliance
+    severity: high
+    harm_metric: true
+    summary: Debits at or above the threshold need per-debit authentication and cannot be auto-presented.
+    params:
+      threshold_paise: 1500000
+    verification:
+      status: unverified
+      source_url: null
+      note: >-
+        Rs 15,000 is OUR parameter, picked because a threshold of that order is
+        widely described for e-mandate AFA. Confirm the current value, and
+        whether it differs by rail, before making any compliance claim. Day 9.
+
+  # ---------- rate limits: how hard may we push ----------
+  - id: RETRY_CAP_PER_INVOICE
+    kind: rate_limit
+    severity: high
+    harm_metric: false
+    summary: Maximum debit presentments per invoice, per rail.
+    params:
+      card_on_file: 3
+      upi_autopay: 4
+      enach: 3
+    verification:
+      status: unverified
+      source_url: null
+      note: Merchant-policy parameter, not regulation. Ours to choose. Tuned on day 7.
+
+  - id: RETRY_MIN_GAP
+    kind: rate_limit
+    severity: high
+    harm_metric: false
+    summary: Minimum gap between presentments, read from the failure code min_retry_gap_hours.
+    params:
+      source: config/failure_taxonomy.yaml
+    verification: { status: unverified, source_url: null, note: Per-code gaps are ours. }
+
+  - id: RISK_COOLOFF
+    kind: rate_limit
+    severity: high
+    harm_metric: false
+    summary: After a risk or velocity hold, no presentment for the cooling-off window.
+    params:
+      hours: 72
+    verification:
+      status: unverified
+      source_url: null
+      note: Ours. Re-presenting into a velocity block makes later attempts worse.
+
+  # ---------- contact discipline ----------
+  - id: CONTACT_HOURS
+    kind: compliance
+    severity: critical
+    harm_metric: true
+    summary: Outbound contact only between the permitted local hours.
+    params:
+      start_hour: 9
+      end_hour: 19
+      timezone: Asia/Kolkata
+    verification:
+      status: unverified
+      source_url: null
+      note: >-
+        09:00-19:00 is OUR parameter. Restricted contact hours for collections
+        are a real constraint; confirm the exact window and which channels it
+        binds before making any compliance claim. Day 9 task.
+
+  - id: CONTACT_CHANNEL_RATE
+    kind: rate_limit
+    severity: high
+    harm_metric: true
+    summary: At most one outbound message per channel per rolling window.
+    params:
+      window_hours: 24
+      max_per_window: 1
+    verification: { status: unverified, source_url: null, note: Merchant-policy parameter, ours. }
+
+  - id: CONTACT_LIFETIME_CAP
+    kind: rate_limit
+    severity: high
+    harm_metric: true
+    summary: At most N outbound contacts across the whole life of one invoice.
+    params:
+      max_contacts: 4
+    verification: { status: unverified, source_url: null, note: Merchant-policy parameter, ours. }
+
+  - id: CONSENT_REQUIRED
+    kind: compliance
+    severity: critical
+    harm_metric: true
+    summary: A channel may be used only where the customer has recorded consent for it.
+    params: {}
+    verification:
+      status: verified
+      source_url: null
+      note: Definitional. We model consent as a per-channel flag and honour it.
+
+  - id: DND_SUPPRESSION
+    kind: compliance
+    severity: critical
+    harm_metric: true
+    summary: A channel flagged do-not-disturb is suppressed for collection messaging.
+    params:
+      suppressed_channels: [sms, whatsapp]
+    verification:
+      status: unverified
+      source_url: null
+      note: DND registry semantics are real; the exact channel scope here is ours.
+
+  # ---------- stopping rules ----------
+  - id: STOP_ON_SETTLED
+    kind: stop
+    severity: critical
+    harm_metric: true
+    summary: >-
+      Halt immediately once the invoice is settled by any means, including
+      payment made outside our flow. A presentment after settlement is a double
+      charge and is the worst outcome this system can produce.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  - id: STOP_ON_HARD_DECLINE
+    kind: stop
+    severity: critical
+    harm_metric: true
+    summary: Halt presentments on any failure code of class hard.
+    params: {}
+    verification: { status: verified, source_url: null, note: Follows from the taxonomy. }
+
+  - id: STOP_ON_DISPUTE
+    kind: stop
+    severity: critical
+    harm_metric: true
+    summary: Halt all collection activity except human handoff once a dispute is asserted.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  - id: STOP_ON_CANCELLATION
+    kind: stop
+    severity: critical
+    harm_metric: true
+    summary: Halt at the point a customer cancellation request is received.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  - id: STOP_ON_INVOICE_AGE
+    kind: stop
+    severity: medium
+    harm_metric: false
+    summary: Stop the recovery loop once the invoice passes the age limit; hand off or write off.
+    params:
+      max_age_days: 30
+    verification: { status: unverified, source_url: null, note: Merchant-policy parameter, ours. }
+
+  - id: STOP_ON_ATTEMPTS_EXHAUSTED
+    kind: stop
+    severity: medium
+    harm_metric: false
+    summary: Stop once the retry cap or the contact cap is exhausted.
+    params: {}
+    verification: { status: verified, source_url: null, note: Follows from the rate limits. }
+
+  - id: IDEMPOTENT_ATTEMPT
+    kind: eligibility
+    severity: critical
+    harm_metric: true
+    summary: A duplicate failure event for an already-recorded attempt must not produce a second action.
+    params: {}
+    verification: { status: verified, source_url: null, note: Definitional. }
+
+  # ---------- ladder discipline ----------
+  - id: LADDER_MONOTONIC
+    kind: eligibility
+    severity: medium
+    harm_metric: false
+    summary: >-
+      The ladder may advance at most one rung past the highest rung reached, and
+      never descends after a stop condition has fired.
+    params:
+      max_skip: 1
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  - id: P2P_SINGLE
+    kind: rate_limit
+    severity: medium
+    harm_metric: false
+    summary: >-
+      At most one promise-to-pay per invoice. A broken promise forces escalation
+      to human handoff rather than another promise.
+    params:
+      max_promises: 1
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  # ---------- authority bounds: things the agent may never do ----------
+  - id: NO_REFUND
+    kind: authority
+    severity: critical
+    harm_metric: true
+    summary: The agent may never initiate a refund or reversal.
+    params: {}
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  - id: NO_MANDATE_INCREASE
+    kind: authority
+    severity: critical
+    harm_metric: true
+    summary: >-
+      The agent may never raise a mandate cap. Amendment is a customer
+      re-authorisation and always leaves the agent authority.
+    params: {}
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  - id: NO_DISCOUNT
+    kind: authority
+    severity: critical
+    harm_metric: true
+    summary: The agent may never offer a price reduction or write-down to secure payment.
+    params: {}
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  - id: GRACE_CAP
+    kind: authority
+    severity: high
+    harm_metric: false
+    summary: The agent may grant at most one grace period, of at most one billing cycle.
+    params:
+      max_grants: 1
+      max_cycles: 1
+    verification: { status: verified, source_url: null, note: Design decision, ours. }
+
+  - id: NO_VOICE
+    kind: authority
+    severity: high
+    harm_metric: true
+    summary: The agent may not place voice calls. Out of scope for v1 by deliberate choice.
+    params: {}
+    verification:
+      status: verified
+      source_url: null
+      note: Scope decision, ours. See docs/DECISIONS.md D-004.
+
+  - id: NO_THIRD_PARTY_CONTACT
+    kind: authority
+    severity: critical
+    harm_metric: true
+    summary: The agent may contact only the payer, never an employer, relative or reference.
+    params: {}
+    verification:
+      status: verified
+      source_url: null
+      note: Design decision, ours. Third-party contact is a well-known collections abuse.
