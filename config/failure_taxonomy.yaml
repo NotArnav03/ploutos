@@ -1,0 +1,185 @@
+# Failure taxonomy for recurring-debit attempts.
+#
+# HONESTY NOTE: these codes are OURS. They are modeled on the shape of
+# ISO-8583 response categories and publicly described NPCI/UPI-Autopay and
+# e-NACH failure reasons. They are NOT a claim of parity with any payment
+# service provider's live error-code set, Razorpay's included. Any resemblance
+# of a string to a real gateway code is coincidental and not load-bearing.
+#
+# class:
+#   soft            - the debit may succeed later with no change but timing
+#   soft_action     - needs a customer-side or merchant-side change first
+#   soft_compliance - blocked until a compliance precondition is satisfied
+#   hard            - no retry can succeed; the agent must stop and say why
+version: 1
+
+codes:
+  - code: INSUFFICIENT_FUNDS
+    label: Insufficient funds
+    class: soft
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: true
+    min_retry_gap_hours: 24
+    remedy: retime
+    modeled_on: ISO-8583 51 / NACH R-code insufficient balance
+    description: >
+      Payer account lacked balance at debit time. The dominant failure mode in
+      Indian recurring collections. Recovery is almost entirely a timing problem.
+
+  - code: ISSUER_UNAVAILABLE
+    label: Issuer or bank unavailable
+    class: soft
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: true
+    min_retry_gap_hours: 6
+    remedy: retime
+    modeled_on: ISO-8583 91 issuer inoperative
+    description: >
+      Payer's bank did not respond or returned a technical decline. Correlated
+      across accounts at the same issuer, which is what makes issuer-health
+      signal worth computing.
+
+  - code: TXN_TIMEOUT
+    label: Transaction timeout
+    class: soft
+    rails: [upi_autopay, enach]
+    retryable: true
+    min_retry_gap_hours: 2
+    remedy: retime
+    modeled_on: switch-level timeout / no final response
+    description: >
+      No terminal response within the switch window. Often transient. Carries
+      genuine ambiguity about whether the debit landed, so idempotency matters.
+
+  - code: LIMIT_EXCEEDED
+    label: Daily or per-transaction limit exceeded
+    class: soft
+    rails: [upi_autopay, card_on_file]
+    retryable: true
+    min_retry_gap_hours: 24
+    remedy: retime
+    modeled_on: ISO-8583 61 exceeds withdrawal limit
+    description: >
+      Payer hit a rail or issuer limit. Clears on the limit window rollover.
+
+  - code: RISK_HOLD
+    label: Risk or velocity hold
+    class: soft
+    rails: [card_on_file, upi_autopay]
+    retryable: true
+    min_retry_gap_hours: 72
+    remedy: cool_off
+    modeled_on: ISO-8583 59 suspected fraud / velocity rules
+    description: >
+      Issuer or network risk engine blocked the debit. Retrying too soon
+      reinforces the velocity signal and makes later attempts worse.
+
+  - code: INSTRUMENT_EXPIRED
+    label: Instrument expired
+    class: soft_action
+    rails: [card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: update_instrument
+    modeled_on: ISO-8583 54 expired card
+    description: >
+      Saved card is past expiry. No retry of the same instrument can succeed;
+      requires the payer to supply a new one.
+
+  - code: MANDATE_CAP_EXCEEDED
+    label: Debit exceeds mandate cap
+    class: soft_action
+    rails: [upi_autopay, enach]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: amend_mandate
+    modeled_on: UPI Autopay / e-NACH max-amount breach
+    description: >
+      Invoice amount is above the maximum the mandate authorises. Retrying the
+      same amount is guaranteed to fail. Amending a mandate is a customer
+      re-authorisation, so this always leaves the agent's authority.
+
+  - code: PREDEBIT_NOTICE_MISSING
+    label: Pre-debit notification not served
+    class: soft_compliance
+    rails: [upi_autopay, enach]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: serve_notice
+    modeled_on: e-mandate pre-debit notification requirement
+    description: >
+      The advance notice preceding an e-mandate debit was not served within the
+      required window. The debit must not be re-presented until notice is served
+      and the window has elapsed. See rule PREDEBIT_NOTICE in the rules registry.
+
+  - code: AFA_REQUIRED
+    label: Additional factor of authentication required
+    class: soft_compliance
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: request_afa
+    modeled_on: e-mandate additional-factor-of-authentication threshold
+    description: >
+      Debit value is at or above the threshold where the payer must authenticate
+      the individual debit. Cannot be silently re-presented under the mandate.
+
+  - code: PSP_DOWN
+    label: Payer PSP or app unavailable
+    class: soft
+    rails: [upi_autopay]
+    retryable: true
+    min_retry_gap_hours: 12
+    remedy: switch_rail
+    modeled_on: UPI PSP-level unavailability
+    description: >
+      Payer-side UPI app or PSP is down. Distinct from ISSUER_UNAVAILABLE
+      because an alternate rail on the same account can still work.
+
+  - code: MANDATE_REVOKED
+    label: Mandate revoked by payer
+    class: hard
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: none
+    modeled_on: mandate cancellation / stop-payment instruction
+    description: >
+      The payer withdrew standing authorisation. Any further debit attempt is
+      unauthorised, not merely futile. Terminal, and the hardest stop we enforce.
+
+  - code: ACCOUNT_CLOSED
+    label: Account closed or frozen
+    class: hard
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: none
+    modeled_on: ISO-8583 14 invalid account / account closed
+    description: >
+      Underlying account no longer exists or is frozen. Terminal for this
+      instrument on every rail.
+
+  - code: INSTRUMENT_BLOCKED
+    label: Instrument blocked, lost or stolen
+    class: hard
+    rails: [card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: none
+    modeled_on: ISO-8583 41/43 lost or stolen card
+    description: >
+      Instrument is blocked by the issuer. Terminal, and a hard signal never to
+      re-present against this token.
+
+  - code: CUSTOMER_DISPUTE
+    label: Payer disputing or has churned
+    class: hard
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: none
+    modeled_on: chargeback raised / service cancellation asserted by payer
+    description: >
+      Payer has asserted they do not owe this. Collection activity beyond a
+      human handoff is inappropriate regardless of what the ledger says.

@@ -1,0 +1,86 @@
+# Failure-mix scenarios.
+#
+# The mix is an ASSUMPTION, not a measurement. We do not have production data,
+# so instead of defending one distribution we run the headline evaluation under
+# three and report all three. If a result only survives under one mix, it is an
+# artifact of the mix and we say so.
+#
+# Weights are over the codes in config/failure_taxonomy.yaml and must sum to 1.
+# A code that a rail cannot produce (INSTRUMENT_EXPIRED on upi_autopay, say) is
+# dropped and the remaining weights renormalised per rail by the generator.
+version: 1
+
+default_mix: mix_a
+
+mixes:
+  mix_a:
+    label: Funds-dominant
+    rationale: >-
+      Balance-timing failures dominate, which is the pattern usually described
+      for consumer recurring collections in India. Most value is recoverable and
+      the lever that matters most is when to re-present. This is the headline mix.
+    hard_share_note: 12% of failures are terminal by construction.
+    weights:
+      INSUFFICIENT_FUNDS: 0.38
+      ISSUER_UNAVAILABLE: 0.12
+      TXN_TIMEOUT: 0.05
+      LIMIT_EXCEEDED: 0.06
+      RISK_HOLD: 0.04
+      INSTRUMENT_EXPIRED: 0.09
+      MANDATE_CAP_EXCEEDED: 0.04
+      PREDEBIT_NOTICE_MISSING: 0.03
+      AFA_REQUIRED: 0.03
+      PSP_DOWN: 0.04
+      MANDATE_REVOKED: 0.06
+      ACCOUNT_CLOSED: 0.03
+      INSTRUMENT_BLOCKED: 0.02
+      CUSTOMER_DISPUTE: 0.01
+
+  mix_b:
+    label: Technical-dominant
+    rationale: >-
+      Infrastructure noise dominates: issuer downtime, switch timeouts, PSP
+      outages. Favourable to any policy that retries at all, so it is the mix
+      where our agent should have the LEAST headroom over naive retry. Included
+      precisely because it is unflattering.
+    hard_share_note: 7% of failures are terminal by construction.
+    weights:
+      INSUFFICIENT_FUNDS: 0.22
+      ISSUER_UNAVAILABLE: 0.26
+      TXN_TIMEOUT: 0.12
+      LIMIT_EXCEEDED: 0.05
+      RISK_HOLD: 0.06
+      INSTRUMENT_EXPIRED: 0.06
+      MANDATE_CAP_EXCEEDED: 0.03
+      PREDEBIT_NOTICE_MISSING: 0.02
+      AFA_REQUIRED: 0.02
+      PSP_DOWN: 0.09
+      MANDATE_REVOKED: 0.04
+      ACCOUNT_CLOSED: 0.02
+      INSTRUMENT_BLOCKED: 0.005
+      CUSTOMER_DISPUTE: 0.005
+
+  mix_c:
+    label: Mandate-decay-dominant
+    rationale: >-
+      An ageing subscriber base: revoked mandates, expired instruments, caps
+      breached by price rises. Over a quarter of the value is unrecoverable by
+      any policy. Tests whether the agent STOPS correctly rather than whether it
+      recovers well, and it is where a naive retry policy burns the most money
+      on attempts that cannot succeed.
+    hard_share_note: 27% of failures are terminal by construction.
+    weights:
+      INSUFFICIENT_FUNDS: 0.24
+      ISSUER_UNAVAILABLE: 0.08
+      TXN_TIMEOUT: 0.03
+      LIMIT_EXCEEDED: 0.04
+      RISK_HOLD: 0.03
+      INSTRUMENT_EXPIRED: 0.13
+      MANDATE_CAP_EXCEEDED: 0.07
+      PREDEBIT_NOTICE_MISSING: 0.04
+      AFA_REQUIRED: 0.05
+      PSP_DOWN: 0.02
+      MANDATE_REVOKED: 0.15
+      ACCOUNT_CLOSED: 0.07
+      INSTRUMENT_BLOCKED: 0.03
+      CUSTOMER_DISPUTE: 0.02
