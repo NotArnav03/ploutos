@@ -1,0 +1,30 @@
+{
+  "name": "vasooli",
+  "version": "0.0.1",
+  "private": true,
+  "description": "Bounded recovery agent for failed recurring payments on Indian rails",
+  "author": "Arnav",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "gen": "tsx src/cli/gen.ts",
+    "eval": "tsx src/cli/eval.ts",
+    "replay": "tsx src/cli/replay.ts"
+  },
+  "dependencies": {
+    "yaml": "^2.6.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.2.7"
+  }
+}
