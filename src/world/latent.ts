@@ -78,17 +78,28 @@ export const LatentStateSchema = z.object({
   out_of_band_payment_at: TimestampSchema.nullable(),
   /** Sim day this payer asks to cancel. */
   cancellation_request_at: TimestampSchema.nullable(),
-
-  /**
-   * Whether ANY sequence of permitted actions could have recovered this
-   * invoice. Computed by the world, used only by the oracle baseline and by
-   * the reporting layer to state the recoverable ceiling honestly. Never
-   * exposed through the adapter.
-   */
-  recoverable: z.boolean(),
-  /** Why not, when recoverable is false. Quoted in the report. */
-  unrecoverable_reason: z.string().nullable(),
 });
+
+/**
+ * NOTE - there is deliberately no `recoverable` field here.
+ *
+ * An earlier draft carried `recoverable: boolean` plus a reason string, set by
+ * the generator. That would have made the denominator of the headline metric a
+ * number we typed: the report would say "recovered 68% of what was recoverable"
+ * where "recoverable" meant "whatever the generator asserted". It is precisely
+ * the grading-our-own-homework failure this project exists to avoid, and it is
+ * invisible in the output.
+ *
+ * Recoverability is therefore DERIVED, not declared. The oracle policy searches
+ * over permitted action sequences against this latent state, through the same
+ * simulator every other policy runs against, and whatever it recovers is the
+ * ceiling. That makes the denominator a reproducible search result.
+ *
+ * It also buys a real invariant: if any observation-only policy ever recovers
+ * more than the oracle, the oracle's search is incomplete and the ceiling is
+ * wrong, so the run is invalid and must not be reported. See
+ * OracleViolationError in src/domain/policy.ts.
+ */
 export type LatentState = z.infer<typeof LatentStateSchema>;
 
 /**
