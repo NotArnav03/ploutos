@@ -5,3 +5,6 @@ node_modules/
 *.log
 .DS_Store
 .cache/llm/*.tmp
+
+# Regenerable from seed via `npm run gen -- --size 2000 --name stress`; too large to commit.
+data/batches/stress.*
