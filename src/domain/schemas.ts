@@ -1,5 +1,9 @@
 import { z } from 'zod';
 import { PaiseSchema } from './money.js';
+import { TimestampSchema } from './time.js';
+
+export { TimestampSchema } from './time.js';
+export type { Timestamp } from './time.js';
 
 /**
  * The OBSERVABLE domain: everything a real merchant could see about a failing
@@ -45,10 +49,6 @@ export type Segment = z.infer<typeof SegmentSchema>;
 export const LanguageSchema = z.enum(['en', 'hinglish', 'hi']);
 export type Language = z.infer<typeof LanguageSchema>;
 
-/** Simulated wall-clock, ISO-8601 with offset. The world advances it, not us. */
-export const TimestampSchema = z.string().datetime({ offset: true });
-export type Timestamp = z.infer<typeof TimestampSchema>;
-
 // ----------------------------------------------------------------- customer
 
 export const ChannelStateSchema = z.object({
@@ -60,6 +60,23 @@ export const ChannelStateSchema = z.object({
 });
 export type ChannelState = z.infer<typeof ChannelStateSchema>;
 
+/**
+ * All four channels, always present.
+ *
+ * Deliberately an explicit object rather than `z.record(ChannelSchema, ...)`.
+ * A record with enum keys parses happily when keys are missing, so a generator
+ * bug would model a customer as silently unreachable on email rather than
+ * failing loudly — and "we never contacted them" would then read as a policy
+ * decision in the audit trail instead of a defect.
+ */
+export const ChannelMapSchema = z.object({
+  sms: ChannelStateSchema,
+  email: ChannelStateSchema,
+  whatsapp: ChannelStateSchema,
+  inapp: ChannelStateSchema,
+});
+export type ChannelMap = z.infer<typeof ChannelMapSchema>;
+
 export const CustomerSchema = z.object({
   id: z.string(),
   segment: SegmentSchema,
@@ -70,7 +87,7 @@ export const CustomerSchema = z.object({
   prior_recoveries: z.number().int().nonnegative(),
   state: z.string(),
   language_pref: LanguageSchema,
-  channels: z.record(ChannelSchema, ChannelStateSchema),
+  channels: ChannelMapSchema,
 });
 export type Customer = z.infer<typeof CustomerSchema>;
 
