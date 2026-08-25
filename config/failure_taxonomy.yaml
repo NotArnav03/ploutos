@@ -148,6 +148,21 @@ codes:
       The payer withdrew standing authorisation. Any further debit attempt is
       unauthorised, not merely futile. Terminal, and the hardest stop we enforce.
 
+  - code: MANDATE_EXPIRED
+    label: Mandate past its validity date
+    class: hard
+    rails: [upi_autopay, enach, card_on_file]
+    retryable: false
+    min_retry_gap_hours: 0
+    remedy: none
+    modeled_on: e-mandate validity window lapse
+    description: >
+      The standing authorisation reached its end date. Distinct from revocation:
+      nobody withdrew consent, it simply ran out. Carries weight 0 in every mix
+      because it is rarely the FIRST failure on an invoice - it emerges during a
+      retry window when a mandate lapses mid-recovery, which is exactly the
+      mandate_expiring edge case. The simulator derives it from true_valid_till.
+
   - code: ACCOUNT_CLOSED
     label: Account closed or frozen
     class: hard
