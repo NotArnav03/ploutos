@@ -163,6 +163,16 @@ export const ContactSchema = z.object({
   channel: ChannelSchema,
   template_id: z.string(),
   language: LanguageSchema,
+  /**
+   * A mandatory compliance notice rather than a collections message.
+   *
+   * Pre-debit notification is required before an e-mandate debit, so it must
+   * not consume the payer's contact budget or register as pressure in the
+   * goodwill model. Otherwise following the rules would cost the payer a
+   * message they are owed anyway, and a policy could look restrained purely by
+   * skipping a notice it was obliged to send.
+   */
+  compliance: z.boolean(),
   /** Whether the customer demonstrably acted on it (clicked, paid, replied). */
   acted_on: z.boolean(),
 });

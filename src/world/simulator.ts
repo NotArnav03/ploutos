@@ -259,3 +259,39 @@ export function deliver(input: DeliveryInput): DeliveryResult {
   p = Math.min(1, Math.max(0, p));
   return { acted: input.rng.bool(p), p_acted: p };
 }
+
+// -------------------------------------------------------------- engagement
+
+/**
+ * Effects of a payer acting on a message. These mutate latent state, because a
+ * payer topping up their account or replacing a card genuinely changes the
+ * world - the merchant just cannot see it directly.
+ *
+ * Kept here rather than in the orchestrator so that every change to ground
+ * truth lives inside the frozen world model and is covered by its golden hash.
+ */
+export type Engagement = 'topped_up' | 'instrument_updated';
+
+export function applyEngagement(
+  latent: LatentState,
+  kind: Engagement,
+  at: Timestamp,
+  timezone: string,
+): void {
+  switch (kind) {
+    case 'topped_up': {
+      // The payer funds the account now. Modelled as moving the refill day to
+      // today with a window long enough for a prompt retry to land. It does not
+      // create money that was never there: an insolvent payer's balance stays
+      // below the invoice, which is why nudging them still fails.
+      latent.balance_refill_day = Math.min(28, localDayOfMonth(at, timezone));
+      latent.funded_window_days = Math.max(latent.funded_window_days, 5);
+      break;
+    }
+    case 'instrument_updated': {
+      latent.instrument_validity = 'valid';
+      latent.instrument_expires_at = null;
+      break;
+    }
+  }
+}

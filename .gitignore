@@ -8,3 +8,6 @@ node_modules/
 
 # Regenerable from seed via `npm run gen -- --size 2000 --name stress`; too large to commit.
 data/batches/stress.*
+
+# Ad-hoc run directories. The frozen submission run is committed explicitly.
+results/*/

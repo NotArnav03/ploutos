@@ -139,3 +139,45 @@ at 15.7%, inside the intended 15–27% band.
 The drift table is now permanent output of `npm run gen` and the bounds are
 asserted in `tests/world.test.ts`, so a future change that quietly breaks the
 causal chain fails the build rather than producing a flattering batch.
+
+---
+
+## 2026-08-25 · Day 3
+
+### C-007 — The naive baseline was accidentally a strawman
+**Severity: high (it would have inflated the headline). Cost: ~15 minutes.**
+
+`naive-retry` served a pre-debit notice whenever `retry_debit` was unavailable,
+without checking *why* it was unavailable. A case blocked by `RETRY_MIN_GAP`
+therefore got a fresh notice on every wake: **1,949 notices against 787 retries.**
+
+Nothing failed. The run was clean, the recovery number was unchanged, and the
+only visible symptom was a message count that looked slightly high in a column
+I had added an hour earlier for a different reason.
+
+It matters because the baseline is what the agent gets measured against. An
+inflated baseline cost makes the agent's efficiency look better for a reason
+that has nothing to do with the agent. Fixed by serving a notice only when
+`PREDEBIT_NOTICE` is the rule actually named in the exclusion list — which is
+only checkable because the gate records *which* rule blocked *which* action.
+The "why not" logging paid for itself before the agent existed.
+
+Notices fell to 269 and cost per ₹100 recovered from 0.85 to 0.81. There is now
+a regression test asserting notices stay below retries.
+
+### C-008 — Compliance notices were counted as collections pressure
+**Severity: medium. Cost: ~15 minutes.**
+
+Pre-debit notification is legally required before an e-mandate debit. It was
+being recorded as an ordinary contact, so it consumed the payer's contact
+budget, counted toward nudge fatigue, and would have fed the goodwill penalty
+once that was wired in.
+
+The perverse consequence: a policy that skipped a notice it was obliged to send
+would score as more restrained than one that sent it. Added a `compliance` flag
+to the contact record and split the metric into `contacts_total` (collections)
+and `notices_total` (compliance). Fatigue and goodwill now count only the former.
+
+Worth stating in the write-up because it is a genuine modelling judgement rather
+than a bug: a mandatory notice is not pressure, and a metric that treats it as
+pressure will reward non-compliance.
