@@ -14,3 +14,5 @@ export const CACHE_DIR = path.join(REPO_ROOT, '.cache', 'llm');
 export const TAXONOMY_PATH = path.join(CONFIG_DIR, 'failure_taxonomy.yaml');
 export const RULES_PATH = path.join(CONFIG_DIR, 'rules_registry.yaml');
 export const MIX_PATH = path.join(CONFIG_DIR, 'failure_mix.yaml');
+
+export const COSTS_PATH = path.join(CONFIG_DIR, 'costs.yaml');

@@ -1,0 +1,65 @@
+# Cost model for recovery activity.
+#
+# "Money recovered" on its own rewards a policy that carpet-bombs every payer
+# with every channel until something lands. Costing the interventions is what
+# makes the stopping rules earn their place in the metric rather than being
+# decoration, so the headline includes a net figure.
+#
+# HONESTY NOTE - two kinds of number live in this file and they are NOT
+# equally defensible:
+#
+#   mechanical costs  - message fees and per-attempt gateway fees. Real costs a
+#                       merchant actually pays. Our figures are plausible
+#                       order-of-magnitude assumptions, not quoted rate cards.
+#
+#   goodwill cost     - an ASSUMED penalty for over-contacting. There is no way
+#                       to measure this from a simulation, and a churn model
+#                       invented here would be unfalsifiable. It is kept
+#                       deliberately simple and the report prints net recovery
+#                       BOTH ways: mechanical-only as the headline, and
+#                       goodwill-inclusive as a clearly labelled secondary.
+#
+# Nothing here is sourced from Razorpay's published pricing and nothing here
+# should be read as such.
+version: 1
+
+# ---------------------------------------------------------------- messaging
+# Per outbound message, in paise. inapp is free because it costs no vendor fee.
+channel_cost_paise:
+  sms: 20
+  whatsapp: 35
+  email: 2
+  inapp: 0
+
+# ------------------------------------------------------------ debit attempts
+# Per presentment, in paise. A failed attempt is not free: it consumes a
+# gateway request and, on e-NACH, can attract a return charge. This is what
+# makes an untargeted retry policy expensive rather than merely ineffective.
+attempt_cost_paise:
+  upi_autopay:
+    failed: 50
+    succeeded: 0
+  enach:
+    failed: 500
+    succeeded: 0
+  card_on_file:
+    failed: 100
+    # Charged on the settled amount, in basis points, for a successful debit.
+    succeeded_bps: 200
+
+# --------------------------------------------------------------- other levers
+payment_link_cost_paise: 0
+human_handoff_cost_paise: 15000 # ~15 min of an agent's time, assumed
+
+# ------------------------------------------------------------- goodwill model
+# ASSUMPTION. Reported separately from mechanical cost, never folded silently
+# into the headline.
+goodwill:
+  # Contacts up to this count are treated as costless goodwill-wise.
+  free_contacts: 2
+  # Each contact beyond that costs this fraction of customer LTV.
+  penalty_per_extra_contact_bps: 25
+  # A case ending in cancellation after 3+ contacts is charged this fraction of
+  # LTV. Attribution is an assumption: we cannot know the contacts caused it.
+  cancellation_penalty_bps: 500
+  attributed_after_contacts: 3
