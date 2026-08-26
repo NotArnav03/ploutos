@@ -66,9 +66,20 @@ export function cacheKey(input: {
     .slice(0, 32);
 }
 
+/**
+ * Decisions written since the last flush before one is forced.
+ *
+ * A full batch is an hour of paid API calls, and the flush at the end of the
+ * run is no use at all if the process dies in minute fifty. Checkpointing costs
+ * one file write per five hundred decisions and means a crash loses seconds of
+ * work instead of everything.
+ */
+const AUTOFLUSH_EVERY = 500;
+
 export class DecisionCache {
   private readonly entries = new Map<string, CacheEntry>();
   private dirty = false;
+  private sinceFlush = 0;
   hits = 0;
   misses = 0;
 
@@ -105,6 +116,7 @@ export class DecisionCache {
   put(entry: CacheEntry): void {
     this.entries.set(entry.key, entry);
     this.dirty = true;
+    if (++this.sinceFlush >= AUTOFLUSH_EVERY) this.flush();
   }
 
   /**
@@ -122,5 +134,6 @@ export class DecisionCache {
       JSON.stringify(sorted, null, 1) + '\n',
     );
     this.dirty = false;
+    this.sinceFlush = 0;
   }
 }

@@ -68,6 +68,9 @@ async function main(): Promise<void> {
   const metrics: Metrics[] = [];
 
   const noCache = argv.includes('--no-cache');
+  // Applied to the agent alone. Every deterministic policy stays on the
+  // sequential path that produced the committed baselines.
+  const concurrency = Number(arg(argv, '--concurrency') ?? 8);
   let agent: ReturnType<typeof makeAgent> | null = null;
 
   for (const name of requested) {
@@ -96,6 +99,7 @@ async function main(): Promise<void> {
       run_id: `${runId}-${name}`,
       ledger_path: path.join(outDir, `audit.${name}.jsonl.gz`),
       seed,
+      concurrency: name === 'agent' ? concurrency : 1,
     });
     // A tampered or broken trail is worse than no trail, because it still looks
     // credible. Refuse to report numbers derived from one.
@@ -120,9 +124,13 @@ async function main(): Promise<void> {
       // batch does not throw away decisions that were already paid for.
       agent.flush();
       const s = agent.stats;
+      const perCall = s.calls > 0 ? result.wall_ms / s.calls : 0;
       process.stdout.write(
-        `    ${s.cache_hits} cached, ${s.calls} live call(s), ` +
-          `${s.api_errors} error(s), ${s.tokens_in}/${s.tokens_out} tokens in/out\n`,
+        `    ${s.cache_hits} cached, ${s.calls} live call(s) at concurrency ${concurrency}, ` +
+          `${s.retries} retried, ${s.api_errors} error(s)\n` +
+          `    ${s.tokens_in.toLocaleString()} in / ${s.tokens_out.toLocaleString()} out tokens` +
+          (s.calls > 0 ? `, ${perCall.toFixed(0)}ms per decision` : '') +
+          `\n`,
       );
       if (s.api_errors > 0) {
         process.stdout.write(

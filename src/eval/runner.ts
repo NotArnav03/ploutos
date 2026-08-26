@@ -70,6 +70,54 @@ export interface RunOptions {
   run_id: string;
   ledger_path: string;
   seed: number;
+  /**
+   * How many cases in one wake-wave may have a decision in flight at once.
+   *
+   * Defaults to 1, which is the sequential path every deterministic policy
+   * uses and is byte-for-byte the loop that produced every committed baseline.
+   * It exists for exactly one caller: the agent, whose decisions are network
+   * round-trips of a few seconds each. At one at a time, a 500-case batch is
+   * roughly twelve hours of waiting on a socket.
+   *
+   * Raising it is safe because the wave is a set of independent payers. The
+   * only state shared across a wave is the issuer-health tracker, and the only
+   * effect of a different interleaving is that a case may read that tracker one
+   * presentment earlier or later.
+   *
+   * That is an argument, so it is also a test: `tests/concurrency.test.ts` runs
+   * the same world at 1 and at 8 with a stub that answers at varying speeds, and
+   * asserts every per-case result and every metric comes out identical. It was
+   * checked against the live API too - the demo batch run at concurrency 8 and
+   * replayed from cache at concurrency 1 differ only in `run_id` and `wall_ms`.
+   */
+  concurrency?: number;
+}
+
+/**
+ * Run `fn` over `items` with at most `limit` in flight.
+ *
+ * At limit 1 this is a plain sequential for-await, deliberately: the default
+ * path has to be the same code it has always been, not a pool that happens to
+ * be configured with one worker.
+ */
+async function forEachConcurrent<T>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  if (limit <= 1) {
+    for (const item of items) await fn(item);
+    return;
+  }
+  let next = 0;
+  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      await fn(items[i]!);
+    }
+  });
+  await Promise.all(workers);
 }
 
 /**
@@ -128,17 +176,17 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
       .filter((rt) => !isClosed(rt) && isBefore(rt.next_wake, horizonEnd))
       .sort((a, b) => (a.next_wake < b.next_wake ? -1 : a.next_wake > b.next_wake ? 1 : a.case_id < b.case_id ? -1 : 1));
 
-    for (const rt of pending) {
+    await forEachConcurrent(pending, opts.concurrency ?? 1, async (rt) => {
       const used = steps.get(rt.case_id) ?? 0;
       if (used >= MAX_STEPS_PER_CASE) {
         closeCase(rt, 'STOP_ON_INVOICE_AGE', 'step budget exhausted');
-        continue;
+        return;
       }
       steps.set(rt.case_id, used + 1);
       progressed = true;
 
       const wc = caseById.get(rt.case_id);
-      if (!wc) continue;
+      if (!wc) return;
       const now = rt.next_wake;
 
       // ---- world events the merchant can now observe
@@ -196,7 +244,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
           money_delta_paise: 0 as AuditEvent['money_delta_paise'],
           cost_paise: paise(0),
         });
-        continue;
+        return;
       }
 
       // ---- the decision
@@ -331,7 +379,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
         rt.stalled_steps++;
         rt.next_wake = addHours(now, 7);
       }
-    }
+    });
   }
 
   // Anything still open at the horizon is simply unrecovered.

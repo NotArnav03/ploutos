@@ -1,4 +1,3 @@
-import Anthropic from '@anthropic-ai/sdk';
 import type { Action, ActionType } from '../domain/actions.js';
 import type { Policy, PolicyDecision, PolicyInput } from '../domain/policy.js';
 import type { Channel, Language } from '../domain/schemas.js';
@@ -7,23 +6,9 @@ import { staticPolicy } from '../policy/static_policy.js';
 import { DecisionCache, cacheKey, type CacheEntry } from './cache.js';
 import { PROMPT_VERSION, SYSTEM_PROMPT, renderCase } from './prompt.js';
 import { AgentOutputSchema, outputJsonSchema, type AgentOutput } from './schema.js';
+import { AGENT_MODEL, geminiCompleter, type Completer } from './provider.js';
 
-export const AGENT_MODEL = 'claude-opus-5';
-
-/**
- * One model call. Injectable so that the decision pipeline - schema
- * construction, validation, action assembly, gate re-check, fallback - can be
- * tested without a network or an API key, and so a test can deliberately return
- * a malformed or forbidden answer to prove the guards fire.
- */
-export interface Completer {
-  (req: {
-    system: string;
-    user: string;
-    schema: Record<string, unknown>;
-    model: string;
-  }): Promise<{ output: unknown; tokens_in: number; tokens_out: number }>;
-}
+export { AGENT_MODEL, type Completer };
 
 export interface AgentOptions {
   /** Re-query the API instead of replaying committed decisions. */
@@ -37,43 +22,13 @@ export interface AgentOptions {
   cache?: DecisionCache;
 }
 
-/** The real transport. */
-export function anthropicCompleter(client: Anthropic = new Anthropic()): Completer {
-  return async (req) => {
-    const response = await client.messages.create({
-      model: req.model,
-      max_tokens: 4096,
-      // Adaptive thinking: this is a genuine judgement call under uncertainty,
-      // not an extraction task. Effort stays low because the decision is small
-      // and there are thousands of them.
-      thinking: { type: 'adaptive' },
-      output_config: {
-        effort: 'low',
-        format: { type: 'json_schema', schema: req.schema },
-      },
-      // The system prompt is frozen and identical on every call, so it caches;
-      // the case body is volatile and goes after the breakpoint.
-      system: [{ type: 'text', text: req.system, cache_control: { type: 'ephemeral' } }],
-      messages: [{ role: 'user', content: req.user }],
-    });
-
-    if (response.stop_reason === 'refusal') {
-      throw new Error(`model declined: ${response.stop_details?.category ?? 'unknown'}`);
-    }
-    const text = response.content.find((b) => b.type === 'text');
-    if (!text || text.type !== 'text') throw new Error('no text block in response');
-    return {
-      output: JSON.parse(text.text),
-      tokens_in: response.usage.input_tokens,
-      tokens_out: response.usage.output_tokens,
-    };
-  };
-}
-
 export interface AgentStats {
   calls: number;
   cache_hits: number;
   cache_misses: number;
+  /** Requests the transport retried and eventually got an answer for. */
+  retries: number;
+  /** Decisions that fell back to static-policy because the API never answered. */
   api_errors: number;
   tokens_in: number;
   tokens_out: number;
@@ -118,6 +73,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
     calls: 0,
     cache_hits: 0,
     cache_misses: 0,
+    retries: 0,
     api_errors: 0,
     tokens_in: 0,
     tokens_out: 0,
@@ -170,7 +126,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
       if (output === null) {
         const started = Date.now();
         try {
-          completer ??= anthropicCompleter();
+          completer ??= geminiCompleter({ onRetry: () => stats.retries++ });
           const response = await completer({
             system: SYSTEM_PROMPT,
             user: renderCase(obs, permitted),
