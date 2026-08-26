@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto';
-import { createWriteStream, type WriteStream } from 'node:fs';
+import { createWriteStream, readFileSync } from 'node:fs';
+import type { Writable } from 'node:stream';
+import { createGzip, gunzipSync } from 'node:zlib';
 import { AuditEventSchema, CHAIN_ROOT, type AuditEvent } from '../domain/audit.js';
 import { canonicalJson } from '../domain/canonical.js';
 import type { CaseRuntime } from '../orchestrator/runtime.js';
@@ -46,15 +48,43 @@ export function hashEvent(e: Omit<AuditEvent, 'hash'>): string {
   return createHash('sha256').update(canonical).digest('hex');
 }
 
+/**
+ * Read a ledger back, transparently handling the gzipped form.
+ *
+ * A full trail for a 500-case run is tens of megabytes of JSONL and compresses
+ * about 20:1, because every record repeats the same rule ids and field names.
+ * Committing the compressed form is what makes "there is an audit trail" a
+ * claim a reviewer can check rather than one they have to take on trust.
+ */
+export function readLedgerFile(path: string): AuditEvent[] {
+  const raw = readFileSync(path);
+  const text = (path.endsWith('.gz') ? gunzipSync(raw) : raw).toString('utf8');
+  return text
+    .split('\n')
+    .filter((l) => l.trim().length > 0)
+    .map((l) => JSON.parse(l) as AuditEvent);
+}
+
 export class Ledger {
-  private readonly stream: WriteStream;
+  /** What records are written into: the gzip transform, or the file directly. */
+  private readonly stream: Writable;
+  /** What must finish before the file on disk is complete. */
+  private readonly sink: Writable;
   private count = 0;
 
   constructor(
     private readonly path: string,
     private readonly run_id: string,
   ) {
-    this.stream = createWriteStream(path, { encoding: 'utf8', flags: 'w' });
+    const file = createWriteStream(path, { encoding: 'utf8', flags: 'w' });
+    if (path.endsWith('.gz')) {
+      const gzip = createGzip({ level: 9 });
+      gzip.pipe(file);
+      this.stream = gzip;
+    } else {
+      this.stream = file;
+    }
+    this.sink = file;
   }
 
   get written(): number {
@@ -92,9 +122,16 @@ export class Ledger {
     return parsed.data;
   }
 
+  /**
+   * Ending the gzip transform is not the same as the file being complete, so
+   * wait on the file stream itself. Closing early truncates the trail, and a
+   * truncated trail fails verification in a way that looks like tampering.
+   */
   async close(): Promise<void> {
     await new Promise<void>((resolve, reject) => {
-      this.stream.end((err?: Error | null) => (err ? reject(err) : resolve()));
+      this.sink.once('error', reject);
+      this.sink.once('close', () => resolve());
+      this.stream.end();
     });
   }
 }

@@ -1,7 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import type { AuditEvent } from '../domain/audit.js';
-import { verifyChain } from '../ledger/ledger.js';
+import { readLedgerFile, verifyChain } from '../ledger/ledger.js';
 import { CostModel } from '../domain/costs.js';
 import { formatINR, paise, type Paise } from '../domain/money.js';
 import { BATCH_DIR, RESULTS_DIR } from '../domain/paths.js';
@@ -84,16 +83,12 @@ async function main(): Promise<void> {
       taxonomy,
       costs,
       run_id: `${runId}-${name}`,
-      ledger_path: path.join(outDir, `audit.${name}.jsonl`),
+      ledger_path: path.join(outDir, `audit.${name}.jsonl.gz`),
       seed,
     });
     // A tampered or broken trail is worse than no trail, because it still looks
     // credible. Refuse to report numbers derived from one.
-    const events = readFileSync(result.ledger_path, 'utf8')
-      .trim()
-      .split('\n')
-      .filter((l) => l.length > 0)
-      .map((l) => JSON.parse(l) as AuditEvent);
+    const events = readLedgerFile(result.ledger_path);
     const breaks = verifyChain(events);
     if (breaks.length > 0) {
       throw new Error(
