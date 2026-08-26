@@ -13,7 +13,7 @@ import { staticPolicy } from '../policy/static_policy.js';
 import { makeOracle } from '../world/oracle.js';
 import { makeAgent } from '../agent/agent.js';
 import { runBatch, type RunResult } from '../eval/runner.js';
-import { computeMetrics, uplift, type Metrics } from '../metrics/compute.js';
+import { computeMetrics, pairedComparison, uplift, type Metrics } from '../metrics/compute.js';
 import type { LatentState } from '../world/latent.js';
 import type { World, WorldCase } from '../world/types.js';
 
@@ -254,6 +254,38 @@ async function main(): Promise<void> {
     );
     console.log(`  median days to recovery: ${naive.median_days_to_recovery?.toFixed(1) ?? '—'}`);
     console.log(`  cost per Rs 100 recovered: ${naive.cost_per_100_recovered?.toFixed(2) ?? '—'}`);
+  }
+
+  // ---- paired comparison against the tuned rules engine
+  //
+  // Both policies ran the same cases, so the comparison is paired and the
+  // per-case difference is the right thing to resample. Their independent
+  // intervals overlap almost entirely and say nothing.
+  const agentRun = runs.find((r) => r.policy === 'agent');
+  const staticRun = runs.find((r) => r.policy === 'static-policy');
+  if (agentRun && staticRun) {
+    const cmp = pairedComparison(agentRun, staticRun);
+    if (cmp) {
+      const signed = (x: number) =>
+        (x < 0 ? '-' : '+') + formatINR(paise(Math.abs(Math.round(x))));
+      console.log(
+        `\nagent vs static-policy, paired over ${cmp.n_cases} cases ` +
+          `(${cmp.n_differing} of them reached different outcomes)`,
+      );
+      console.log(
+        `  gross ${signed(cmp.gross_diff_paise)}  95% CI ${signed(cmp.gross_ci_low)} .. ${signed(cmp.gross_ci_high)}`,
+      );
+      console.log(
+        `  net   ${signed(cmp.net_diff_paise)}  95% CI ${signed(cmp.net_ci_low)} .. ${signed(cmp.net_ci_high)}`,
+      );
+      const pct = (cmp.p_behind * 100).toFixed(1);
+      console.log(
+        `  the agent came out behind in ${pct}% of resamples` +
+          (cmp.p_behind > 0.05 && cmp.p_behind < 0.95
+            ? '  <- inside sampling noise; not a result either way'
+            : ''),
+      );
+    }
   }
 
   for (const m of metrics) {

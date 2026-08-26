@@ -441,7 +441,7 @@ not working because it compiles and its tests pass. It is working when you have
 looked at what it actually emitted on real data. I have now been saved four
 separate times by printing something and reading it.
 
-### C-018 — The agent lost to the rules engine, and the reason was in my prompt
+### C-018 — The agent failed to beat the rules engine, and the reason was in my prompt
 **Severity: high. Cost: ~2 hours. This is the day-6 result.**
 
 First honest five-policy run on the 500-case main batch, prompt v1,
@@ -452,8 +452,30 @@ gemini-3.7-flash, 2,736 decisions, zero API errors, zero gate rejections:
 | static-policy | ₹5,96,091.90 | 65.2% | ₹5,88,407.77 | 185 | 1215 | 436 | 28 |
 | agent (v1) | ₹5,85,644.72 | 64.1% | ₹5,69,527.56 | 204 | 1081 | 732 | 99 |
 
-The agent lost. Not by much on gross — 1.8% — but by 3.2% on net, and losing
-to a rules engine that thinks for free is losing.
+The agent did not beat the rules engine. It is 1.8% behind on gross and 3.2%
+behind on net.
+
+**How much of that is real:** almost none of it, and this correction was added
+after the fact. Both policies ran the same 500 cases, so the comparison is
+paired, and resampling the per-case difference gives:
+
+```
+gross -₹10,447.18  95% CI -₹1,87,631.35 .. +₹1,69,982.79
+net   -₹18,880.21  95% CI -₹1,96,765.26 .. +₹1,60,724.57
+the agent came out behind in 54.7% of resamples
+```
+
+54.7% is a coin flip. Only 89 of 500 cases reached different outcomes at all,
+and those differences concentrate in a few dozen high-value invoices whose
+outcomes are lumpy, so a 500-case batch cannot resolve a two-percent difference
+in recovered value. "The agent lost" — how this entry was originally written —
+was an overclaim in the pessimistic direction, and no more defensible than the
+optimistic kind.
+
+What is *not* noisy is the behavioural evidence below. Those are counts over
+thousands of decisions: 500 foregone retries, 99 escalations against 28, a 53:2
+ratio of authentication requests to presentments. Those defects are certain even
+though their price is not, and they are the reason to change the prompt.
 
 The demo batch had said the opposite: 60 cases, agent at 99.97% of ceiling,
 comfortably ahead of static-policy. That is the entire argument for not

@@ -5,7 +5,9 @@
 
 ## The result
 
-The agent **lost to the deterministic rules engine.**
+The agent **did not beat the deterministic rules engine** — and the gap sits
+inside sampling noise, so this is a failure to demonstrate an advantage rather
+than a demonstrated deficit.
 
 | policy | recovered | of face | of ceiling | net | cases | atts | msgs | notices | refused | esc | harm |
 |---|---|---|---|---|---|---|---|---|---|---|---|
@@ -19,6 +21,19 @@ Value at risk ₹17,07,092.23. Structurally unrecoverable ₹2,68,856.39 (15.7%)
 Model spend for the agent run: **$4.57**.
 
 Down 1.8% on gross and 3.2% on net against a rules engine that thinks for free.
+Both ran the same 500 cases, so the comparison is paired:
+
+```
+gross -₹10,447.18  95% CI -₹1,87,631.35 .. +₹1,69,982.79
+net   -₹18,880.21  95% CI -₹1,96,765.26 .. +₹1,60,724.57
+behind in 54.7% of resamples  <- inside sampling noise, not a result either way
+```
+
+Only 89 of 500 cases reached different outcomes, and those differences sit in a
+few dozen high-value invoices, so this batch cannot resolve a two-percent
+difference in rupees. The *behavioural* findings below are not noisy — they are
+counts over thousands of decisions — and they are the real result.
+
 The full diagnosis — which invoices, which failure codes, and why — is
 `docs/CHALLENGES.md` C-018. The short version: the agent waited while
 `retry_debit` was permitted 500 times across 251 cases (₹10,04,775 of invoice

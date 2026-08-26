@@ -265,6 +265,103 @@ function bootstrapCI(
   return [paise(Math.round(lo)), paise(Math.round(hi))];
 }
 
+export interface PairedComparison {
+  policy: string;
+  baseline: string;
+  n_cases: number;
+  /** Cases where the two policies actually reached different outcomes. */
+  n_differing: number;
+  gross_diff_paise: number;
+  gross_ci_low: number;
+  gross_ci_high: number;
+  net_diff_paise: number;
+  net_ci_low: number;
+  net_ci_high: number;
+  /** Share of bootstrap resamples in which the policy came out behind. */
+  p_behind: number;
+}
+
+/**
+ * Compare two policies on the SAME cases, resampling their per-case difference.
+ *
+ * WHY PAIRED, AND WHY IT MATTERS HERE
+ *
+ * Every policy in this harness runs against an identical copy of the world, so
+ * a comparison between two of them is paired by construction. Comparing their
+ * independent totals throws that away: on the day-6 batch the two policies'
+ * separate 95% intervals were roughly Rs 4.2L-7.8L each and overlapped almost
+ * entirely, which says nothing at all about whether one is better.
+ *
+ * Resampling the per-case difference instead removes all the variance the two
+ * policies share - the same invoices, the same failures, the same payers - and
+ * leaves only the variance in where they actually diverged.
+ *
+ * WHAT IT IS HONEST ABOUT
+ *
+ * Even paired, a 500-case batch cannot resolve a two-percent difference in
+ * recovered value, because the differences concentrate in a few dozen
+ * high-value invoices and those outcomes are lumpy. `p_behind` is reported so
+ * that a near-tie reads as a near-tie rather than as a result. A behavioural
+ * count - refusals, escalations, retries foregone - is a far sharper instrument
+ * than recovered rupees at this sample size, and the README says so.
+ */
+export function pairedComparison(
+  policy: RunResult,
+  baseline: RunResult,
+  samples = 5000,
+): PairedComparison | null {
+  const base = new Map(baseline.cases.map((c) => [c.case_id, c]));
+  const gross: number[] = [];
+  const net: number[] = [];
+  let differing = 0;
+
+  for (const a of policy.cases) {
+    const b = base.get(a.case_id);
+    if (!b) continue;
+    const g = a.recovered_paise - b.recovered_paise;
+    gross.push(g);
+    net.push(a.recovered_paise - a.cost_paise - (b.recovered_paise - b.cost_paise));
+    if (g !== 0) differing++;
+  }
+  if (gross.length === 0) return null;
+
+  // Seeded from the run, so the interval is part of the reproducible result
+  // rather than something that shifts every time the report is regenerated.
+  const rng = Rng.stream(policy.seed, 'paired-bootstrap', STREAM.outcome);
+  const grossTotals: number[] = [];
+  const netTotals: number[] = [];
+  for (let s = 0; s < samples; s++) {
+    let g = 0;
+    let n = 0;
+    for (let i = 0; i < gross.length; i++) {
+      const pick = rng.int(0, gross.length - 1);
+      g += gross[pick] ?? 0;
+      n += net[pick] ?? 0;
+    }
+    grossTotals.push(g);
+    netTotals.push(n);
+  }
+  const behind = grossTotals.filter((t) => t < 0).length / samples;
+  grossTotals.sort((a, b) => a - b);
+  netTotals.sort((a, b) => a - b);
+  const lo = Math.floor(samples * 0.025);
+  const hi = Math.min(samples - 1, Math.floor(samples * 0.975));
+
+  return {
+    policy: policy.policy,
+    baseline: baseline.policy,
+    n_cases: gross.length,
+    n_differing: differing,
+    gross_diff_paise: gross.reduce((a, b) => a + b, 0),
+    gross_ci_low: grossTotals[lo] ?? 0,
+    gross_ci_high: grossTotals[hi] ?? 0,
+    net_diff_paise: net.reduce((a, b) => a + b, 0),
+    net_ci_low: netTotals[lo] ?? 0,
+    net_ci_high: netTotals[hi] ?? 0,
+    p_behind: behind,
+  };
+}
+
 /** Uplift of one policy over another, with the baseline named explicitly. */
 export function uplift(policy: Metrics, baseline: Metrics): {
   absolute_paise: number;
