@@ -1,5 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { loadEnv } from '../domain/env.js';
 import { readLedgerFile, verifyChain } from '../ledger/ledger.js';
 import { CostModel } from '../domain/costs.js';
 import { formatINR, paise, type Paise } from '../domain/money.js';
@@ -43,6 +44,7 @@ function pct(x: number | null): string {
 }
 
 async function main(): Promise<void> {
+  loadEnv();
   const argv = process.argv.slice(2);
   const batch = arg(argv, '--batch') ?? 'main';
   const seed = Number(arg(argv, '--seed') ?? 42);
