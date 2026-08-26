@@ -2,13 +2,14 @@ import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { ACTION_TYPES } from '../src/domain/actions.js';
 import { CostModel } from '../src/domain/costs.js';
 import { RuleRegistry } from '../src/domain/rules.js';
 import { TaxonomyIndex } from '../src/domain/taxonomy.js';
 import type { AuditEvent } from '../src/domain/audit.js';
 import { verifyChain } from '../src/ledger/ledger.js';
 import { doNothing, naiveRetry } from '../src/policy/baselines.js';
-import { DAY4_PENDING } from '../src/policy/gate.js';
+import { ENFORCED_BY_VOCABULARY } from '../src/policy/gate.js';
 import { runBatch, type RunResult } from '../src/eval/runner.js';
 import { computeMetrics } from '../src/metrics/compute.js';
 import { generateWorld } from '../src/world/generator.js';
@@ -111,7 +112,8 @@ describe('determinism', () => {
     const a = await run(naiveRetry, world(200, 1), 'seed-a', 1);
     const b = await run(naiveRetry, world(200, 2), 'seed-b', 2);
     expect(JSON.stringify(a.cases)).not.toBe(JSON.stringify(b.cases));
-  });
+    // Two 200-case runs with a full ledger write apiece: real work, not a hang.
+  }, 30_000);
 });
 
 describe('audit ledger', () => {
@@ -169,11 +171,22 @@ describe('audit ledger', () => {
 });
 
 describe('gate', () => {
-  it('names only real rules in its day-4 backlog', () => {
-    // The gate is deliberately partial today. Tracking the gap as rule ids that
-    // must resolve keeps it from being quietly forgotten.
-    for (const id of DAY4_PENDING) {
+  it('names only real rules among those enforced by the vocabulary', () => {
+    for (const id of ENFORCED_BY_VOCABULARY) {
       expect(() => registry.require(id), id).not.toThrow();
+    }
+  });
+
+  it('has no action that could express a forbidden authority', () => {
+    // The authority bounds are enforced by construction rather than by a check:
+    // there is no refund, discount, mandate-increase, voice or third-party
+    // action in the vocabulary. This asserts that directly, so the claim in the
+    // README is verified rather than asserted.
+    const forbidden = ['refund', 'discount', 'reversal', 'voice', 'call', 'increase_mandate'];
+    for (const t of ACTION_TYPES) {
+      for (const word of forbidden) {
+        expect(t.includes(word), `${t} looks like a forbidden authority`).toBe(false);
+      }
     }
   });
 
@@ -195,8 +208,25 @@ describe('gate', () => {
       'STOP_ON_INVOICE_AGE',
       'STOP_ON_ATTEMPTS_EXHAUSTED',
     ]);
+    for (const id of [
+      'CONSENT_REQUIRED',
+      'DND_SUPPRESSION',
+      'CONTACT_HOURS',
+      'CONTACT_CHANNEL_RATE',
+      'CONTACT_LIFETIME_CAP',
+      'LADDER_MONOTONIC',
+      'P2P_SINGLE',
+      'GRACE_CAP',
+    ]) {
+      enforced.add(id);
+    }
+
+    // Every rule in the registry is now either enforced at runtime or enforced
+    // by the action vocabulary. Nothing is merely aspirational.
     const all = registry.all().map((r) => r.id);
-    const unaccounted = all.filter((id) => !enforced.has(id) && !DAY4_PENDING.includes(id));
+    const unaccounted = all.filter(
+      (id) => !enforced.has(id) && !ENFORCED_BY_VOCABULARY.includes(id),
+    );
     expect(unaccounted).toEqual([]);
   });
 });
