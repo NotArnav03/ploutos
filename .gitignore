@@ -9,5 +9,7 @@ node_modules/
 # Regenerable from seed via `npm run gen -- --size 2000 --name stress`; too large to commit.
 data/batches/stress.*
 
-# Ad-hoc run directories. The frozen submission run is committed explicitly.
+# Ad-hoc run directories. Checkpoint and submission runs are committed explicitly
+# with `git add -f` (metrics and per-case results only; the audit ledgers are
+# tens of megabytes per run and regenerate byte-identically from the seed).
 results/*/

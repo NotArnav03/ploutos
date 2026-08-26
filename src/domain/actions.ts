@@ -195,6 +195,11 @@ export const ExclusionSchema = z.object({
   action_type: z.enum(ACTION_TYPES),
   rule_id: z.string(),
   detail: z.string(),
+  /**
+   * Set when the refusal is about a specific channel rather than the action
+   * itself - "you may send this, but not by SMS to a DND-registered payer".
+   */
+  channel: ChannelSchema.nullable(),
 });
 export type Exclusion = z.infer<typeof ExclusionSchema>;
 
@@ -202,6 +207,24 @@ export const PermittedSetSchema = z.object({
   case_id: z.string(),
   observation_hash: z.string(),
   permitted: z.array(z.enum(ACTION_TYPES)),
+  /**
+   * Channels usable for a contacting action right now. Consent, DND, contact
+   * hours and per-channel frequency all bind here rather than on the action, so
+   * a policy chooses WHAT to do from `permitted` and HOW to reach the payer
+   * from this. An action that needs a channel is dropped from `permitted`
+   * entirely once this is empty.
+   */
+  permitted_channels: z.array(ChannelSchema),
+  /**
+   * When contact hours next reopen, or null if they are open now.
+   *
+   * Without this a policy that wants to send a message but is outside the
+   * window has to guess an offset, and a guess that happens to divide 24 hours
+   * lands the case on the same wall-clock time forever - it can then never
+   * contact anyone, and the invoice ages out. The gate already knows the
+   * answer, so it says it rather than making every policy re-derive it.
+   */
+  contact_window_opens_at: TimestampSchema.nullable(),
   excluded: z.array(ExclusionSchema),
 });
 export type PermittedSet = z.infer<typeof PermittedSetSchema>;

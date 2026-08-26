@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { canonicalJson } from '../domain/canonical.js';
 import type { CaseObservation, IssuerHealth, Invoice, InvoiceStatus } from '../domain/schemas.js';
 import { CaseObservationSchema } from '../domain/schemas.js';
 import type { Timestamp } from '../domain/time.js';
@@ -73,14 +74,6 @@ export function observe(args: {
  * observation, no extra field leaked in.
  */
 export function observationHash(obs: CaseObservation): string {
-  return createHash('sha256').update(stableStringify(obs)).digest('hex').slice(0, 32);
+  return createHash('sha256').update(canonicalJson(obs)).digest('hex').slice(0, 32);
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== 'object') return JSON.stringify(value) ?? 'null';
-  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
-  const entries = Object.entries(value as Record<string, unknown>)
-    .filter(([, v]) => v !== undefined)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-  return `{${entries.map(([k, v]) => `${JSON.stringify(k)}:${stableStringify(v)}`).join(',')}}`;
-}

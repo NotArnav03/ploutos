@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { createWriteStream, type WriteStream } from 'node:fs';
 import { AuditEventSchema, CHAIN_ROOT, type AuditEvent } from '../domain/audit.js';
+import { canonicalJson } from '../domain/canonical.js';
 import type { CaseRuntime } from '../orchestrator/runtime.js';
 
 /**
@@ -18,9 +19,11 @@ import type { CaseRuntime } from '../orchestrator/runtime.js';
  */
 
 export function hashEvent(e: Omit<AuditEvent, 'hash'>): string {
-  // Field order is fixed here rather than taken from Object.keys, so the hash
-  // does not depend on the order a caller happened to build the object in.
-  const canonical = JSON.stringify([
+  // Fields are listed explicitly, and each is serialised with canonicalJson so
+  // that nested objects hash by content rather than by key order. Plain
+  // JSON.stringify here was order-sensitive, which made records fail to verify
+  // against themselves once zod re-ordered their keys on parse.
+  const canonical = canonicalJson([
     e.event_id,
     e.run_id,
     e.case_id,
@@ -71,6 +74,7 @@ export class Ledger {
       prev_hash: rt.prev_hash,
     };
     const full: AuditEvent = { ...withChain, hash: hashEvent(withChain) };
+
 
     const parsed = AuditEventSchema.safeParse(full);
     if (!parsed.success) {
