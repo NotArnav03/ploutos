@@ -16,7 +16,9 @@ import type { CaseResult, RunResult } from '../eval/runner.js';
 export interface HarmSummary {
   double_charge_attempts: number;
   contacts_after_stop: number;
-  total_violations: number;
+  harm_events: number;
+  /** Refused choices. Reported as a quality signal, never as harm. */
+  gate_rejections: number;
   /** A run with any harm is not reportable as a success, whatever it recovered. */
   clean: boolean;
 }
@@ -66,6 +68,12 @@ export interface Metrics {
   harm: HarmSummary;
   stops_by_rule: Record<string, number>;
   fallback_rate: number;
+  /**
+   * Wakes where the policy neither acted nor scheduled anything and the harness
+   * had to advance the clock for it. Not harm - a signal that a policy is
+   * failing to make progress, which is how a stranded case hides.
+   */
+  stalled_steps: number;
 
   /** Bootstrap 95% interval on recovered value. */
   recovered_ci_low: Paise;
@@ -117,8 +125,10 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
   const softValue = sumPaise(cases.filter((c) => !c.first_code_hard).map((c) => c.at_risk_paise));
 
   const doubleCharges = cases.reduce((a, c) => a + c.double_charge_attempts, 0);
-  const violations = cases.reduce((a, c) => a + c.violations, 0);
+  const gateRejections = cases.reduce((a, c) => a + c.gate_rejections, 0);
+  const harmEvents = cases.reduce((a, c) => a + c.harm_events, 0);
   const fallbacks = cases.reduce((a, c) => a + c.fallbacks, 0);
+  const stalledSteps = cases.reduce((a, c) => a + c.stalled_steps, 0);
 
   const stopsByRule: Record<string, number> = {};
   for (const c of cases) {
@@ -171,11 +181,15 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
     harm: {
       double_charge_attempts: doubleCharges,
       contacts_after_stop: 0,
-      total_violations: violations,
-      clean: doubleCharges === 0 && violations === 0,
+      harm_events: harmEvents,
+      gate_rejections: gateRejections,
+      // A refused choice is not harm. Only breaches that actually reached the
+      // world count against a run.
+      clean: doubleCharges === 0 && harmEvents === 0,
     },
     stops_by_rule: stopsByRule,
     fallback_rate: cases.length === 0 ? 0 : fallbacks / cases.length,
+    stalled_steps: stalledSteps,
 
     recovered_ci_low: ciLow,
     recovered_ci_high: ciHigh,

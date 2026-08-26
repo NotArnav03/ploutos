@@ -1,11 +1,11 @@
 import { z } from 'zod';
 import type { ActionType, Exclusion } from '../domain/actions.js';
-import { ACTION_TYPES } from '../domain/actions.js';
+import { ACTION_TYPES, CONTACTING_ACTIONS, LADDER_RUNG } from '../domain/actions.js';
 import type { PolicyCheck } from '../domain/audit.js';
-import type { CaseObservation, Rail } from '../domain/schemas.js';
+import type { CaseObservation, Channel, Rail } from '../domain/schemas.js';
 import type { RuleRegistry } from '../domain/rules.js';
 import type { TaxonomyIndex } from '../domain/taxonomy.js';
-import { epochMs, hoursBetween, daysBetween, type Timestamp } from '../domain/time.js';
+import { epochMs, hoursBetween, daysBetween, isWithinHours, nextWithinHours, type Timestamp } from '../domain/time.js';
 import type { CaseRuntime } from '../orchestrator/runtime.js';
 
 /**
@@ -27,15 +27,17 @@ import type { CaseRuntime } from '../orchestrator/runtime.js';
  * tests, so it cannot be quietly forgotten.
  */
 
-export const DAY4_PENDING: readonly string[] = [
-  'CONSENT_REQUIRED',
-  'DND_SUPPRESSION',
-  'CONTACT_HOURS',
-  'CONTACT_CHANNEL_RATE',
-  'CONTACT_LIFETIME_CAP',
-  'LADDER_MONOTONIC',
-  'P2P_SINGLE',
-  'GRACE_CAP',
+/**
+ * Authority bounds that need no runtime check because the action vocabulary
+ * contains no way to violate them. There is no refund action, no discount
+ * action, no mandate-increase action, no voice action and no third-party
+ * contact action in src/domain/actions.ts.
+ *
+ * They are still recorded as passing checks in the audit trail, because "the
+ * agent cannot do this" is worth being able to demonstrate from the log rather
+ * than asking a reviewer to take the type system on trust.
+ */
+export const ENFORCED_BY_VOCABULARY: readonly string[] = [
   'NO_REFUND',
   'NO_MANDATE_INCREASE',
   'NO_DISCOUNT',
@@ -53,10 +55,100 @@ export interface GateInput {
 
 export interface GateResult {
   permitted: ActionType[];
+  permitted_channels: Channel[];
+  /**
+   * When contact hours next reopen, or null if they are open now. See the note
+   * on PermittedSetSchema: this exists so that a policy which is blocked only
+   * by the clock can wait to a time that actually helps.
+   */
+  contact_window_opens_at: Timestamp | null;
   excluded: Exclusion[];
   checks: PolicyCheck[];
   /** Non-null when a stop rule fired. The case must close. */
   stop: { rule_id: string; detail: string } | null;
+}
+
+const ALL_CHANNELS: readonly Channel[] = ['sms', 'email', 'whatsapp', 'inapp'];
+
+/**
+ * Which channels may carry a collections message right now.
+ *
+ * Compliance notices are exempt from the frequency caps - a payer is owed the
+ * notice before a debit, and charging it against their contact budget would
+ * mean following the rules costs them a message. Consent, DND and contact hours
+ * still bind, because those are about whether we may reach them at all.
+ */
+function permittedChannels(
+  input: GateInput,
+  excluded: Exclusion[],
+  checks: PolicyCheck[],
+  forCompliance: boolean,
+): Channel[] {
+  const { observation: obs, runtime: rt, registry, now } = input;
+  const out: Channel[] = [];
+
+  const tz = registry.param('CONTACT_HOURS', 'timezone', z.string());
+  const startHour = registry.param('CONTACT_HOURS', 'start_hour', z.number().int());
+  const endHour = registry.param('CONTACT_HOURS', 'end_hour', z.number().int());
+  const inHours = isWithinHours(now, tz, startHour, endHour);
+
+  const windowHours = registry.param('CONTACT_CHANNEL_RATE', 'window_hours', z.number().positive());
+  const maxPerWindow = registry.param(
+    'CONTACT_CHANNEL_RATE',
+    'max_per_window',
+    z.number().int().positive(),
+  );
+  const suppressed = registry.param(
+    'DND_SUPPRESSION',
+    'suppressed_channels',
+    z.array(z.string()),
+  );
+
+  for (const ch of ALL_CHANNELS) {
+    const state = obs.customer.channels[ch];
+    const drop = (rule_id: string, detail: string): void => {
+      excluded.push({ action_type: 'notify_soft', rule_id, detail, channel: ch });
+    };
+
+    if (!state.reachable) {
+      drop('CONSENT_REQUIRED', `no ${ch} address on file`);
+      continue;
+    }
+    if (!state.consent) {
+      drop('CONSENT_REQUIRED', `payer has not consented to ${ch}`);
+      continue;
+    }
+    if (state.dnd && suppressed.includes(ch)) {
+      drop('DND_SUPPRESSION', `${ch} is do-not-disturb registered`);
+      continue;
+    }
+    if (!inHours) {
+      drop('CONTACT_HOURS', `${now} is outside ${startHour}:00-${endHour}:00 ${tz}`);
+      continue;
+    }
+    if (!forCompliance) {
+      const recent = rt.contacts.filter(
+        (c) =>
+          !c.compliance &&
+          c.channel === ch &&
+          hoursBetween(c.ts, now) < windowHours,
+      ).length;
+      if (recent >= maxPerWindow) {
+        drop('CONTACT_CHANNEL_RATE', `${recent} ${ch} message(s) in the last ${windowHours}h`);
+        continue;
+      }
+    }
+    out.push(ch);
+  }
+
+  if (out.length > 0) {
+    checks.push({
+      rule_id: 'CONSENT_REQUIRED',
+      verdict: 'pass',
+      detail: `usable channels: ${out.join(', ')}`,
+    });
+  }
+  return out;
 }
 
 export function computePermitted(input: GateInput): GateResult {
@@ -69,7 +161,7 @@ export function computePermitted(input: GateInput): GateResult {
   const block = (action: ActionType, rule_id: string, detail: string): void => {
     if (!blocked.has(action)) {
       blocked.add(action);
-      excluded.push({ action_type: action, rule_id, detail });
+      excluded.push({ action_type: action, rule_id, detail, channel: null });
     }
   };
   const pass = (rule_id: string, detail: string): void => {
@@ -84,9 +176,12 @@ export function computePermitted(input: GateInput): GateResult {
     checks.push({ rule_id: stop.rule_id, verdict: 'block', detail: stop.detail });
     return {
       permitted: ['stop_terminal'],
+      permitted_channels: [],
+      contact_window_opens_at: null,
       excluded: ACTION_TYPES.filter((a) => a !== 'stop_terminal').map((a) => ({
         action_type: a,
         rule_id: stop.rule_id,
+        channel: null,
         detail: stop.detail,
       })),
       checks,
@@ -202,8 +297,99 @@ export function computePermitted(input: GateInput): GateResult {
     block('switch_rail', 'MANDATE_ACTIVE_REQUIRED', 'no alternate rail on file for this payer');
   }
 
+  // ------------------------------------------------------- contact discipline
+  const collectionsChannels = permittedChannels(input, excluded, checks, false);
+  const complianceChannels = permittedChannels(input, [], [], true);
+
+  const collectionsContacts = rt.contacts.filter((c) => !c.compliance).length;
+  const lifetimeCap = registry.param(
+    'CONTACT_LIFETIME_CAP',
+    'max_contacts',
+    z.number().int().positive(),
+  );
+  const lifetimeExhausted = collectionsContacts >= lifetimeCap;
+  if (lifetimeExhausted) {
+    for (const a of CONTACTING_ACTIONS) {
+      if (a === 'serve_predebit_notice') continue; // owed regardless
+      block(a, 'CONTACT_LIFETIME_CAP', `${collectionsContacts} of ${lifetimeCap} contacts used`);
+    }
+  } else {
+    pass('CONTACT_LIFETIME_CAP', `${collectionsContacts} of ${lifetimeCap} contacts used`);
+  }
+
+  for (const a of CONTACTING_ACTIONS) {
+    const channels = a === 'serve_predebit_notice' ? complianceChannels : collectionsChannels;
+    if (channels.length === 0) {
+      block(a, 'CONSENT_REQUIRED', 'no channel is usable for this payer right now');
+    }
+  }
+
+  // ------------------------------------------------------- ladder discipline
+  const maxSkip = registry.param('LADDER_MONOTONIC', 'max_skip', z.number().int().nonnegative());
+  for (const a of ACTION_TYPES) {
+    const rung = LADDER_RUNG[a];
+    // Rung-neutral actions never count as escalating, so serving a required
+    // notice does not cost the payer a step up the ladder.
+    if (rung === null) continue;
+
+    // De-escalation is never gated. The ladder governs how much pressure we
+    // put on a payer, and stopping or handing off to a human apply none - they
+    // are the opposite of escalating. An earlier version gated them by rung,
+    // which made `stop_terminal` (rung 7) unreachable from rung 0 and left
+    // policies unable to give up: the oracle burned its entire step budget
+    // waiting on cases it had already determined were unrecoverable.
+    if (a === 'stop_terminal' || a === 'handoff_human') continue;
+
+    if (rung > rt.ladder_rung + maxSkip + 1) {
+      block(
+        a,
+        'LADDER_MONOTONIC',
+        `rung ${rung} is more than ${maxSkip + 1} above the current rung ${rt.ladder_rung}`,
+      );
+    }
+  }
+
+  const maxPromises = registry.param('P2P_SINGLE', 'max_promises', z.number().int().positive());
+  if (rt.promises.length >= maxPromises) {
+    block(
+      'capture_promise_to_pay',
+      'P2P_SINGLE',
+      `${rt.promises.length} promise(s) already captured; a broken promise escalates instead`,
+    );
+  }
+
+  const maxGrants = registry.param('GRACE_CAP', 'max_grants', z.number().int().positive());
+  if (rt.grace_grants >= maxGrants) {
+    block('grant_grace', 'GRACE_CAP', `${rt.grace_grants} of ${maxGrants} grace periods granted`);
+  }
+
+  // --------------------------------------------------------- authority bounds
+  // Nothing to block: the vocabulary contains no way to express these. Recorded
+  // so the log demonstrates it rather than asking a reviewer to trust the types.
+  for (const id of ENFORCED_BY_VOCABULARY) {
+    checks.push({
+      rule_id: id,
+      verdict: 'not_applicable',
+      detail: 'no such action exists in the vocabulary; enforced by construction',
+    });
+  }
+
   const permitted = ACTION_TYPES.filter((a) => !blocked.has(a));
-  return { permitted, excluded, checks, stop: null };
+  const tz = registry.param('CONTACT_HOURS', 'timezone', z.string());
+  const startHour = registry.param('CONTACT_HOURS', 'start_hour', z.number().int());
+  const endHour = registry.param('CONTACT_HOURS', 'end_hour', z.number().int());
+  const contactWindowOpensAt = isWithinHours(now, tz, startHour, endHour)
+    ? null
+    : nextWithinHours(now, tz, startHour, endHour);
+
+  return {
+    permitted,
+    permitted_channels: collectionsChannels,
+    contact_window_opens_at: contactWindowOpensAt,
+    excluded,
+    checks,
+    stop: null,
+  };
 }
 
 /**

@@ -47,9 +47,16 @@ export interface CaseRuntime {
   seq: number;
   prev_hash: string;
 
-  /** Counters the harm metrics read. */
+  // Counters. Gate rejections and harm are deliberately separate: a refused
+  // choice means the gate did its job, and counting it as harm would report a
+  // working safety mechanism as a failure.
+  /** Choices the gate refused before execution. Not harm: the system worked. */
+  gate_rejections: number;
+  /** Wakes where the policy neither acted nor scheduled anything. */
+  stalled_steps: number;
+  /** Harm rules actually breached in execution. Must be zero in a valid run. */
+  harm_events: number;
   double_charge_attempts: number;
-  violations: number;
   fallbacks: number;
 
   /** Set when the world has told us something we could observe. */
@@ -76,7 +83,9 @@ export function newRuntime(caseId: string, firstAttempt: Attempt, wake: Timestam
     seq: 0,
     prev_hash: CHAIN_ROOT,
     double_charge_attempts: 0,
-    violations: 0,
+    gate_rejections: 0,
+    stalled_steps: 0,
+    harm_events: 0,
     fallbacks: 0,
     cancellation_seen_at: null,
     dispute_seen_at: null,

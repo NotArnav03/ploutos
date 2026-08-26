@@ -34,7 +34,11 @@ export interface CaseResult {
   /** Mandatory compliance notices, tracked apart from collections contacts. */
   notices: number;
   double_charge_attempts: number;
-  violations: number;
+  /** Choices the gate refused before execution. A quality signal, not harm. */
+  gate_rejections: number;
+  stalled_steps: number;
+  /** Harm rules actually breached. Any nonzero value invalidates the run. */
+  harm_events: number;
   fallbacks: number;
   stopped_reason: string | null;
   recovered_at: Timestamp | null;
@@ -200,6 +204,8 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
         case_id: rt.case_id,
         observation_hash: obsHash,
         permitted: gate.permitted,
+        permitted_channels: gate.permitted_channels,
+        contact_window_opens_at: gate.contact_window_opens_at,
         excluded: gate.excluded,
       };
       const policyInput = {
@@ -215,7 +221,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
       // ---- enforcement: a choice outside the permitted set is never executed
       let fellBack = false;
       if (!gate.permitted.includes(decision.action.type)) {
-        rt.violations++;
+        rt.gate_rejections++;
         rt.fallbacks++;
         fellBack = true;
 
@@ -262,8 +268,8 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
         ts_wall: toTimestamp(Date.now()),
         actor: policy.usesLatentState ? 'simulator' : 'llm_agent',
         event_type: 'decision',
-        observation_hash: obsHash,
         permitted: gate.permitted,
+        observation_hash: obsHash,
         excluded: gate.excluded,
         policy_checks: null,
         decision: {
@@ -306,8 +312,25 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
         seed: opts.seed,
       });
 
-      // A policy that neither acted nor scheduled anything would spin.
-      if (!isClosed(rt) && rt.next_wake <= now) rt.next_wake = addHours(now, 12);
+      // A policy that neither acted nor scheduled anything would spin, so the
+      // harness advances the clock for it.
+      //
+      // The step is SEVEN hours, not the obvious twelve, and the reason is a
+      // real bug this used to cause. Twelve divides twenty-four, so a stalled
+      // case woke at the same two wall-clock times for the rest of its life;
+      // when both of those times fell outside permitted contact hours, no
+      // message could ever be sent, the required pre-debit notice was never
+      // served, and the invoice aged out while the policy knew exactly which
+      // presentment would have settled it. Seven is coprime with twenty-four,
+      // so a stalled case walks the whole clock instead of resonating with it.
+      //
+      // Stalls are counted rather than absorbed silently: a policy that stalls
+      // often is failing to make progress, and that should be visible in the
+      // metrics rather than hidden in the shape of the clock.
+      if (!isClosed(rt) && rt.next_wake <= now) {
+        rt.stalled_steps++;
+        rt.next_wake = addHours(now, 7);
+      }
     }
   }
 
@@ -335,7 +358,9 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
       contacts: rt.contacts.filter((c) => !c.compliance).length,
       notices: rt.contacts.filter((c) => c.compliance).length,
       double_charge_attempts: rt.double_charge_attempts,
-      violations: rt.violations,
+      gate_rejections: rt.gate_rejections,
+      stalled_steps: rt.stalled_steps,
+      harm_events: rt.harm_events,
       fallbacks: rt.fallbacks,
       stopped_reason: rt.stopped_reason,
       recovered_at: recoveredAt,
@@ -576,7 +601,7 @@ function execute(a: ExecArgs): void {
         // The gate should have stopped this. Recording it rather than
         // suppressing it is the point: harm has to be visible to be counted.
         rt.double_charge_attempts++;
-        rt.violations++;
+        rt.harm_events++;
       }
 
       if (result.success && !result.double_charge) {
