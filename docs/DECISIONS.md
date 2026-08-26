@@ -185,3 +185,36 @@ baseline weakened on purpose is precisely the strawman the ablation exists to
 avoid. Every number in this project therefore measures **automated recovery
 only**, and escalations are reported in their own column so the trade stays in
 view.
+
+### D-014 — The audit trail is committed in full, gzipped
+**2026-08-26**
+
+A 500-case run produces 27,173 audit events across four policies: 63 MB of
+JSONL, dominated by `audit.naive-retry.jsonl` at 34 MB. That is too large to
+commit, and the obvious responses were all bad ones — sample a few hundred
+cases, drop the `excluded` array that makes the trail explanatory, or commit
+nothing and ask a reviewer to take the ledger on trust.
+
+JSONL of this shape compresses about 20:1, because every record repeats the
+same rule ids and field names. The four ledgers are 4.1 MB gzipped, so the
+complete trail is committed with nothing sampled and nothing truncated. The
+`Ledger` writes through a gzip stream when the path ends in `.gz`, and
+`readLedgerFile` handles either form, so `npm run replay` reads the committed
+artifact and a fresh local run identically.
+
+A test asserts that tampering is still detected *through* the compressed form,
+because compression must not become a place an edit can hide.
+
+### D-015 — `ts_wall` is outside the hash
+**2026-08-26**
+
+Every record carries both `ts_sim` (the simulated clock, which is what policy
+decisions are made against) and `ts_wall` (the real clock when the record was
+written). Only `ts_sim` is hashed.
+
+This means a re-run at the same seed reproduces every hash and every number
+exactly, while the files differ byte for byte. That is the honest arrangement:
+`ts_wall` is reporting metadata about when a run happened, not part of what the
+chain attests to. Hashing it would make the trail unreproducible for a reason
+that has nothing to do with integrity, and the README says so rather than
+claiming byte-identical reruns.

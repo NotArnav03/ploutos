@@ -53,7 +53,7 @@ which that happens is a reported number, not a hidden one.
 | 2 | Generator, latent state, simulator, frozen world model | ✅ |
 | 3 | `do-nothing` + `naive-retry` baselines, metric harness | ✅ |
 | 4 | Policy engine, `static-policy` + `oracle` baselines | ✅ |
-| 5 | Hash-chained audit ledger, `npm run replay` | — |
+| 5 | Hash-chained audit ledger, `npm run replay` | ✅ |
 | 6 | LLM decision service | — |
 | 7 | Tuning, promise-to-pay, message copy | — |
 | 8 | Adversarial cases, harm metrics, sensitivity analysis | — |
@@ -97,6 +97,36 @@ npm run typecheck
 
 No API key is needed to run the tests or, once it exists, the evaluation — agent
 decisions replay from a committed cache.
+
+## Reproducing the numbers
+
+```bash
+npm run eval                      # all four policies against the committed batch
+```
+
+Every figure in this repo comes from `results/checkpoint-main-s42`, which is
+committed in full: metrics, per-case results, and all 27,173 hash-chained audit
+events across the four policies.
+
+To check the trail rather than take it on trust:
+
+```bash
+# re-derive every hash and every link in all four chains
+npm run replay -- --run results/checkpoint-main-s42 --verify
+
+# read one case's decisions as a timeline
+npm run replay -- --run results/checkpoint-main-s42 --case CASE-00002
+```
+
+The second prints, for every step of a case: what the gate permitted, **which
+rule refused each thing it did not**, what the policy chose and the reason it
+gave, and what the world did in response. Add `--policy all` to watch four
+policies handle the same case, or `--full` to see every refusal rather than the
+four most relevant.
+
+A run's chain is verified before any metric is reported. A tampered or truncated
+trail is worse than no trail, because it still looks credible, so `npm run eval`
+refuses to print numbers derived from one.
 
 ## Licence
 

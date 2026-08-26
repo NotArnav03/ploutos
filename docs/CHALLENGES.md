@@ -324,3 +324,51 @@ wrong one. Second: the grid search accepted a parameter change worth 0.04% on
 three training seeds, which is well inside run-to-run variation. Held-out seeds
 split 4–1 in its favour, so it stands, but a search that accepts differences
 that small is fitting noise and needs an acceptance margin before day 8.
+
+---
+
+## 2026-08-26 · Day 5
+
+### C-015 — The audit trail did not fit in the repository
+**Severity: medium. Cost: ~40 minutes.**
+
+Day 4 ended with a working hash-chained ledger and a problem I had not
+anticipated: one 500-case run writes 63 MB of audit events, of which
+`audit.naive-retry.jsonl` alone is 34 MB. The submission's central claim is
+that there is an audit trail a reviewer can check, and the trail was too big to
+commit.
+
+The tempting fixes were all quiet compromises. Commit a sample of cases, and
+the trail no longer covers the run the numbers come from. Drop the `excluded`
+array, and the records shrink by most of their volume but stop being able to
+answer "why not" — which is the thing that makes them worth having. Commit
+nothing and describe the format, and the claim reverts to trust-me.
+
+Gzip was the boring answer and the right one: this JSONL is enormously
+repetitive, so it compresses about 20:1, and the four ledgers are 4.1 MB
+compressed. `Ledger` writes through a gzip stream when the path ends in `.gz`,
+`readLedgerFile` handles either form, and the complete trail is committed with
+nothing sampled.
+
+Two things worth recording. First, the fix nearly introduced a worse bug:
+ending a gzip transform is not the same as the underlying file being flushed,
+so an early `close()` truncates the ledger — and a truncated chain fails
+verification in a way indistinguishable from tampering. `close()` now waits on
+the file stream, and a test asserts the compressed and plain forms contain
+identical hashes. Second, there is now a test that tampering is still caught
+*through* the compressed form, because compression must not become somewhere an
+edit can hide.
+
+### C-016 — A reproducibility claim I had to walk back
+**Severity: low. Cost: ~5 minutes. Nobody caught this but me.**
+
+The day-4 checkpoint README said the ledgers "regenerate byte-identically from
+the seed". They do not. Every record carries `ts_wall`, the real clock at the
+moment it was written, so two runs at the same seed produce different bytes.
+
+What is actually true is stronger and more precise: `ts_wall` is deliberately
+excluded from the hash, so a re-run reproduces every hash and every number
+exactly while the files differ. The claim is now stated that way. It is a small
+thing, but "byte-identical" is the kind of overclaim a payments engineer would
+test in thirty seconds, and finding it false would cast doubt on every other
+claim in the repo.
