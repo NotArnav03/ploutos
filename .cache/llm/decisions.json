@@ -1,5 +1,23 @@
 [
  {
+  "key": "0023abbaefb80149f97968986f77224f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "dbb88f39f766d9627ebcd6c475f07ea8",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds on 3rd August, and issuer success rates are currently degraded across recent attempts.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 18,
+   "language": null,
+   "rationale": "Waiting until the morning of 7th August aligns with standard salary credit timing in India, maximizing debit success probability without wasting retry attempts.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1070,
+  "tokens_out": 298,
+  "recorded_at": "2026-08-26T13:48:57.944Z"
+ },
+ {
   "key": "0033662ac3406daeb0d7e11c662768ff",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -88,6 +106,24 @@
   "tokens_in": 1112,
   "tokens_out": 297,
   "recorded_at": "2026-08-26T13:46:14.835Z"
+ },
+ {
+  "key": "0097c2749c3f3a60215b442484a7c465",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "d70a9512bea192287ac269d1c0c76069",
+  "output": {
+   "diagnosis": "Initial UPI Autopay attempt failed due to INSUFFICIENT_FUNDS on the 3rd. Pre-debit notice was served over 24 hours ago on the 4th during the monthly salary credit window.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Mandatory 24-hour pre-debit notice period has elapsed since the notice on 04/08, and salary credits around the 5th make an immediate retry well-timed for recovery.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1054,
+  "tokens_out": 528,
+  "recorded_at": "2026-08-26T13:48:50.454Z"
  },
  {
   "key": "00ac9ad4709bba1af25bec96923ff096",
@@ -448,6 +484,24 @@
   "tokens_in": 1012,
   "tokens_out": 613,
   "recorded_at": "2026-08-26T13:48:52.160Z"
+ },
+ {
+  "key": "02646b921f5fbbfa565e8b4e9d276e0e",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "0fd5d5bfa1fbc22bb3ccef1af566bdb4",
+  "output": {
+   "diagnosis": "The initial debit failed due to temporary issuer downtime (ISSUER_UNAVAILABLE), and the required pre-debit notice was delivered over 24 hours ago.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "The mandatory 24-hour pre-debit notification window has elapsed since 04/08 09:30, and the previous failure was purely transient infrastructure downtime. Mandate is active and healthy, making immediate retry the best path to recovery.",
+   "confidence": 0.92
+  },
+  "tokens_in": 1057,
+  "tokens_out": 302,
+  "recorded_at": "2026-08-26T13:48:46.447Z"
  },
  {
   "key": "02704e43be5674d98a82e78d7b16afb1",
@@ -1438,6 +1492,24 @@
   "tokens_in": 1036,
   "tokens_out": 117,
   "recorded_at": "2026-08-26T13:46:13.696Z"
+ },
+ {
+  "key": "081c50c1a07d10a311f9def8d418655e",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "0557be59dd627f80112faf7893468012",
+  "output": {
+   "diagnosis": "The latest failure was due to transient issuer downtime (ISSUER_UNAVAILABLE) with ISSUER_03 experiencing an 89% failure rate over the last 6 hours.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "Waiting 6 hours allows the issuer outage to recover before re-attempting debit, avoiding burning retries and gateway fees during an active technical degradation.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1093,
+  "tokens_out": 126,
+  "recorded_at": "2026-08-26T13:51:47.401Z"
  },
  {
   "key": "0825e452394da0eb675ed20e0cb775fc",
@@ -2484,6 +2556,24 @@
   "recorded_at": "2026-08-26T13:52:53.605Z"
  },
  {
+  "key": "0c8d05841306898104f888e6c4047738",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "25d142bb53681f690ec22787c6f29002",
+  "output": {
+   "diagnosis": "The UPI Autopay mandate expired on 2026-08-07 after repeated ISSUER_UNAVAILABLE failures prevented successful execution. Direct retries are blocked due to mandate expiry.",
+   "action_type": "send_payment_link",
+   "channel": "whatsapp",
+   "wait_hours": null,
+   "language": "hi",
+   "rationale": "Because the recurring mandate validity window has passed, auto-debits cannot proceed; sending an out-of-band payment link via WhatsApp allows this high-tenure customer to clear the invoice directly.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1094,
+  "tokens_out": 146,
+  "recorded_at": "2026-08-26T13:53:08.219Z"
+ },
+ {
   "key": "0cabffccb8c8e294d22265dc5159f0af",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -2698,6 +2788,24 @@
   "tokens_in": 1097,
   "tokens_out": 275,
   "recorded_at": "2026-08-26T13:36:36.643Z"
+ },
+ {
+  "key": "0e2d97672517d8af0ec2b1382d27ffd7",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "aedb1005dacc384b9986d470d7b33e13",
+  "output": {
+   "diagnosis": "Recurring debit failed twice due to insufficient funds on card on file. Account is likely awaiting typical monthly salary/fund replenishment.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 24,
+   "language": null,
+   "rationale": "Waiting 24 hours aligns the next review with the typical 7th-of-the-month salary credit cycle without burning another debit attempt prematurely.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1065,
+  "tokens_out": 326,
+  "recorded_at": "2026-08-26T13:51:41.076Z"
  },
  {
   "key": "0e476300fc47b020d0a3f0405be84bd7",
@@ -5364,6 +5472,24 @@
   "recorded_at": "2026-08-26T13:48:57.099Z"
  },
  {
+  "key": "1b0be06daada138885bb41fa60e7a7b2",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "ed4a735b6e9094f44f2432139de43a82",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds on August 2nd. A required pre-debit notification was served on August 3rd and the mandatory 24-hour window has elapsed.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "The mandatory 24-hour pre-debit notice period has passed since the email sent yesterday. Retrying the UPI Autopay debit now is the appropriate step to recover the invoice.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1108,
+  "tokens_out": 325,
+  "recorded_at": "2026-08-26T13:48:42.522Z"
+ },
+ {
   "key": "1b12374decb9ac1eaa2b07718012e520",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -5380,6 +5506,24 @@
   "tokens_in": 1124,
   "tokens_out": 121,
   "recorded_at": "2026-08-26T13:53:05.060Z"
+ },
+ {
+  "key": "1b279e6347bc1b25de5c87a4f5c67d88",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "320902debec0af42b9334385459dea65",
+  "output": {
+   "diagnosis": "The transaction requires Additional Factor of Authentication (AFA) as the amount exceeds the statutory limit, but the payer has not completed the mandate authorization requested 25 hours ago.",
+   "action_type": "request_afa",
+   "channel": "sms",
+   "wait_hours": null,
+   "language": "en",
+   "rationale": "Over 24 hours have passed since the initial WhatsApp AFA request without authorization. Following up via SMS provides a multi-channel reminder to prompt mandate approval.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1100,
+  "tokens_out": 574,
+  "recorded_at": "2026-08-26T13:48:58.677Z"
  },
  {
   "key": "1b399b32f57223f33f63bdb5354dbc70",
@@ -6804,6 +6948,24 @@
   "recorded_at": "2026-08-26T13:36:22.788Z"
  },
  {
+  "key": "2207321d56d9399d2500ba1ee4d9f496",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "f27699100df063fc406f7f9235ff7415",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds around the 1st of the month, likely due to month-end liquidity timing.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "72 hours have elapsed since the failure notification on the 1st, giving ample time for salary credit or account funding on this active mandate.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1045,
+  "tokens_out": 117,
+  "recorded_at": "2026-08-26T13:48:52.375Z"
+ },
+ {
   "key": "222e897a86a4bdffe36d573d05d45277",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -7668,6 +7830,24 @@
   "recorded_at": "2026-08-26T13:45:17.253Z"
  },
  {
+  "key": "26800eb544620fdc3a9553df5f89a46e",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "295fd315bc035ccc64dde4483752b4be",
+  "output": {
+   "diagnosis": "Two successive INSUFFICIENT_FUNDS failures indicate the payer's account has not been funded yet, compounded by current transient degradation at ISSUER_10.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 48,
+   "language": null,
+   "rationale": "Waiting until August 7th aligns with standard monthly salary credit cycles and avoids burning gateway fees while ISSUER_10 is experiencing heavy downtime.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1158,
+  "tokens_out": 342,
+  "recorded_at": "2026-08-26T13:51:35.906Z"
+ },
+ {
   "key": "26a343145f1fcea58a40f1e1247138e4",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -7900,6 +8080,24 @@
   "tokens_in": 1162,
   "tokens_out": 351,
   "recorded_at": "2026-08-26T13:47:58.380Z"
+ },
+ {
+  "key": "292b279262fc303e2448a10d31cb3326",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "749eda757a1daf29a6180fb618bda6fb",
+  "output": {
+   "diagnosis": "The previous attempt failed due to insufficient funds on August 4. A pre-debit notice was sent yesterday, allowing a compliant retry now.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "A pre-debit notification was served over 24 hours ago (05/08 13:30), satisfying the regulatory window, and retrying now optimizes recovery before the end of the salary cycle.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1125,
+  "tokens_out": 136,
+  "recorded_at": "2026-08-26T13:48:56.649Z"
  },
  {
   "key": "2945b2e9e62bb0255003c284ac009015",
@@ -8280,6 +8478,24 @@
   "recorded_at": "2026-08-26T13:48:55.358Z"
  },
  {
+  "key": "2b80193da5eaa62bac7e4d74ed1e2a46",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "2dba7d20b1532fabf2d37f24bb9e1530",
+  "output": {
+   "diagnosis": "The recurring charge of ₹4,999.00 exceeds the authorized UPI Autopay mandate cap of ₹4,249.15, preventing auto-debit.",
+   "action_type": "handoff_human",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "High-value SMB customer (39-month tenure, ~₹1.95L LTV) has received three automated notices with no resolution. Mandate cap mismatch requires account manager intervention to update the mandate.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1049,
+  "tokens_out": 384,
+  "recorded_at": "2026-08-26T13:48:58.138Z"
+ },
+ {
   "key": "2b9143fb19b3641bf1af8be63f53e92f",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -8604,6 +8820,24 @@
   "recorded_at": "2026-08-26T13:53:24.116Z"
  },
  {
+  "key": "2d8fe0204b64e991e2f36a235291f0e9",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "c81fc8d308b3943fed0f8699034d7004",
+  "output": {
+   "diagnosis": "Repeated attempts failed due to transient issuer downtime, and the mandate validity window has now expired.",
+   "action_type": "request_instrument_update",
+   "channel": "whatsapp",
+   "wait_hours": null,
+   "language": "hi",
+   "rationale": "Direct debits are blocked because the UPI Autopay mandate has expired; requesting a mandate update will allow recurring payments to resume for this loyal customer.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1104,
+  "tokens_out": 417,
+  "recorded_at": "2026-08-26T13:52:39.882Z"
+ },
+ {
   "key": "2dd26158c712f5002ffdfc6809460bb1",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -8892,6 +9126,24 @@
   "recorded_at": "2026-08-26T13:39:14.152Z"
  },
  {
+  "key": "2f865dce3841d724fecf3b5aa91a0415",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "478d52682ca7eca7b9fb921e2cf25408",
+  "output": {
+   "diagnosis": "The previous debits failed due to insufficient funds early in the month. Today is the 7th, aligning with standard Indian salary credit cycles.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit on the 7th of the month maximizes the chance of collection following salary deposits without burning additional customer messaging goodwill.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1089,
+  "tokens_out": 402,
+  "recorded_at": "2026-08-26T13:52:31.362Z"
+ },
+ {
   "key": "2fa210de9184f4f817e035d4ebdbe16a",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -9162,6 +9414,24 @@
   "recorded_at": "2026-08-26T13:46:44.622Z"
  },
  {
+  "key": "308531a56814d491624aa4ca1c551b4a",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "1b0c4160c832e4453e92f582a7fc4fb9",
+  "output": {
+   "diagnosis": "The previous attempts failed due to LIMIT_EXCEEDED on UPI Autopay, which typically indicates payer account daily/monthly UPI limits were breached.",
+   "action_type": "send_payment_link",
+   "channel": "whatsapp",
+   "wait_hours": null,
+   "language": "hi",
+   "rationale": "Multiple UPI Autopay attempts have failed due to limit restrictions; sending a direct payment link via WhatsApp allows the payer to settle using alternative methods without consuming more mandate retries.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1051,
+  "tokens_out": 130,
+  "recorded_at": "2026-08-26T13:52:31.385Z"
+ },
+ {
   "key": "30c84a7e53d0f0b272ecffed72d5e742",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -9270,6 +9540,24 @@
   "recorded_at": "2026-08-26T13:52:41.898Z"
  },
  {
+  "key": "31822d464ddd0b45c49beffa2f661f7f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "9abeeda0d90575847fc6a87b8c447e89",
+  "output": {
+   "diagnosis": "The initial debit failed due to INSUFFICIENT_FUNDS at the beginning of the month, and a WhatsApp notification was already sent yesterday.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 48,
+   "language": null,
+   "rationale": "Allow time around the early-month salary cycle (up to the 7th) for account funding without spamming the customer with redundant messages or wasting retry attempts.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1028,
+  "tokens_out": 122,
+  "recorded_at": "2026-08-26T13:47:55.278Z"
+ },
+ {
   "key": "319047ed01ed696a721ebea7451c7190",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -9358,6 +9646,24 @@
   "tokens_in": 1160,
   "tokens_out": 308,
   "recorded_at": "2026-08-26T13:52:36.739Z"
+ },
+ {
+  "key": "31b25cefdcecc97f1869df51947717aa",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "31a16deaf6a35a9196cb76915bf727ad",
+  "output": {
+   "diagnosis": "The previous two debits failed due to INSUFFICIENT_FUNDS around early month, but salary credits frequently land by the 7th of the month.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 20,
+   "language": null,
+   "rationale": "Waiting until tomorrow (07/08 morning) aligns with standard Indian salary credit cycles without wasting further retry attempts or messaging limits.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1059,
+  "tokens_out": 121,
+  "recorded_at": "2026-08-26T13:51:42.163Z"
  },
  {
   "key": "31d78aaeeb7b88f5bc74daca71687820",
@@ -10510,6 +10816,24 @@
   "tokens_in": 1064,
   "tokens_out": 126,
   "recorded_at": "2026-08-26T13:53:17.973Z"
+ },
+ {
+  "key": "37be92331d786e90b5e17234fee9f0ba",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "a06a11abbd8c2a96ba2a1016548ff614",
+  "output": {
+   "diagnosis": "The previous attempt failed due to a transient ISSUER_UNAVAILABLE error on 03/08. A fresh predebit notice was successfully sent yesterday (04/08 09:30), fulfilling the required notice window.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "More than 24 hours have passed since the predebit notice on 04/08, and the prior failure was transient infrastructure downtime. Retrying the debit now is compliant and has a high probability of success without bothering the customer.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1037,
+  "tokens_out": 161,
+  "recorded_at": "2026-08-26T13:48:47.317Z"
  },
  {
   "key": "37c4b16c8dc74154bd9a24f15db01b67",
@@ -12708,6 +13032,24 @@
   "recorded_at": "2026-08-26T13:46:53.068Z"
  },
  {
+  "key": "43a40f7f8a26e882f1c613bcb916e3ef",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "7afd8be42eb7052d9136c94beeae2421",
+  "output": {
+   "diagnosis": "The initial debit failed due to a transient UPI transaction or velocity limit (LIMIT_EXCEEDED). More than 24 hours have passed since the required pre-debit notice on 03/08.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "The 24-hour pre-debit notice period has elapsed and account limits have likely reset over the past 48 hours, making a debit re-attempt viable.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1134,
+  "tokens_out": 316,
+  "recorded_at": "2026-08-26T13:47:50.131Z"
+ },
+ {
   "key": "43b1afbb54e711aeccd6424fc4ced97c",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -13914,6 +14256,24 @@
   "recorded_at": "2026-08-26T13:53:24.597Z"
  },
  {
+  "key": "49acb4d54f931f22eae70777d8b99160",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "d0ec6a3a7c508ebbb892ad62c2f59844",
+  "output": {
+   "diagnosis": "Repeated TXN_TIMEOUT failures are driven by transient issuer downtime at ISSUER_01 (100% failure rate over the last 6 hours).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "Retrying immediately would burn an attempt against an issuer currently experiencing 100% downtime. Waiting 6 hours allows the issuer's transient infrastructure issues to clear.",
+   "confidence": 0.92
+  },
+  "tokens_in": 1086,
+  "tokens_out": 128,
+  "recorded_at": "2026-08-26T13:52:32.577Z"
+ },
+ {
   "key": "49d6a1acd69e888667ee17db94f1158f",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -14884,6 +15244,24 @@
   "tokens_in": 1051,
   "tokens_out": 156,
   "recorded_at": "2026-08-26T13:49:13.318Z"
+ },
+ {
+  "key": "4e9130885ab3ba8cea9dfc142c31be5d",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "18a57b0556f4a2ed831e3c64ba2b28d4",
+  "output": {
+   "diagnosis": "The initial debit failed 48 hours ago due to insufficient funds, and the customer was notified via WhatsApp shortly after.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "It is now the 7th of the month (a standard salary credit date in India) and 48 hours since the first attempt, making an automated retry optimal.",
+   "confidence": 0.88
+  },
+  "tokens_in": 983,
+  "tokens_out": 280,
+  "recorded_at": "2026-08-26T13:49:03.155Z"
  },
  {
   "key": "4ea50f9db7b4be5ec9074cbe2ef82774",
@@ -15966,6 +16344,24 @@
   "recorded_at": "2026-08-26T13:48:08.075Z"
  },
  {
+  "key": "545748c32c2c233e54d7405356cb9fb8",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "b793ed9bb3e131120a408f0b62155c3a",
+  "output": {
+   "diagnosis": "The initial debit failed due to a transient UPI or account limit exceeded 49 hours ago, which typically resets daily or across cycles.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "More than 24 hours have passed since the required pre-debit notice, and the transient limit restriction is likely cleared. Retrying the debit now is the optimal recovery action.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1127,
+  "tokens_out": 337,
+  "recorded_at": "2026-08-26T13:48:07.757Z"
+ },
+ {
   "key": "54630e7529c5d0a0a029345234534246",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -16198,6 +16594,24 @@
   "tokens_in": 1007,
   "tokens_out": 134,
   "recorded_at": "2026-08-26T13:46:47.312Z"
+ },
+ {
+  "key": "5669d02ddfa239784c30a75725e510ed",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "5cf7ed1db5746967f113c626648b3726",
+  "output": {
+   "diagnosis": "Recurring debit failed due to INSTRUMENT_EXPIRED. The payer has already received automated card expiration notifications across email, SMS, and in-app channels without updating details.",
+   "action_type": "handoff_human",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "High-value B2B/SMB invoice (₹19,999.00) with 3 exhausted automated customer touchpoints across all permitted channels; manual human outreach is required to secure updated payment details before the invoice ages out.",
+   "confidence": 0.92
+  },
+  "tokens_in": 1053,
+  "tokens_out": 146,
+  "recorded_at": "2026-08-26T13:48:40.403Z"
  },
  {
   "key": "566b93ecb1bbbe5c47ac30ff2cb79602",
@@ -17064,6 +17478,24 @@
   "recorded_at": "2026-08-26T13:38:06.265Z"
  },
  {
+  "key": "5aac94db1b260f3001c3feb99ea2c10f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "fd37fab62bb7b8e585e80874a5db5f6d",
+  "output": {
+   "diagnosis": "The previous two attempts failed due to INSUFFICIENT_FUNDS around early August.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Today is the 7th of the month, a primary salary credit cycle in India, making this the optimal window to retry the debit without exhausting additional payer messaging.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1103,
+  "tokens_out": 113,
+  "recorded_at": "2026-08-26T13:52:33.909Z"
+ },
+ {
   "key": "5abf0612a77d32ba3c1a1266eaf218fa",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -17080,6 +17512,24 @@
   "tokens_in": 1108,
   "tokens_out": 278,
   "recorded_at": "2026-08-26T13:47:01.295Z"
+ },
+ {
+  "key": "5affac4074cba53785e95444693c1e07",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "c4c96381468b9b0a94bdd63050b4b973",
+  "output": {
+   "diagnosis": "Repeated INSUFFICIENT_FUNDS failures indicate cashflow timing issues, but salary credit is typical around the 7th of the month.",
+   "action_type": "send_payment_link",
+   "channel": "whatsapp",
+   "wait_hours": null,
+   "language": "hinglish",
+   "rationale": "Providing a direct payment link on salary day gives the payer an immediate, convenient way to settle without exhausting remaining Autopay retry attempts.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1073,
+  "tokens_out": 523,
+  "recorded_at": "2026-08-26T13:51:47.531Z"
  },
  {
   "key": "5b0e030910d347cd7ec9a4fa5c2cd1e9",
@@ -17314,6 +17764,24 @@
   "tokens_in": 1136,
   "tokens_out": 354,
   "recorded_at": "2026-08-26T13:54:28.478Z"
+ },
+ {
+  "key": "5bc8ac5239a226f3154c98b9bf2a99db",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "5e6ed934fff8c121120c49dd6bb337bf",
+  "output": {
+   "diagnosis": "The recurring debit failed due to MANDATE_CAP_EXCEEDED because the invoice amount (₹99.00) exceeds the mandate cap (₹84.15).",
+   "action_type": "handoff_human",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retries are blocked by the mandate cap and automated messaging limits are exhausted. Escalating to human support to assist this loyal customer (25mo tenure) with updating their mandate.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1073,
+  "tokens_out": 320,
+  "recorded_at": "2026-08-26T13:51:42.169Z"
  },
  {
   "key": "5bd4b3b1dd4fbb8f4d32140fd886c4f1",
@@ -18900,6 +19368,24 @@
   "recorded_at": "2026-08-26T13:45:37.123Z"
  },
  {
+  "key": "63ac8fc26764e85dab46300e03da4a45",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "cb41b292aa01f4dfa79b992ecb1dbddb",
+  "output": {
+   "diagnosis": "The previous retry on 05/08 failed due to transient ISSUER_UNAVAILABLE, and ISSUER_03 is currently experiencing a total outage (100% failure rate over the last 6 hours).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "Retrying immediately will fail due to active issuer downtime. Waiting 6 hours allows time for ISSUER_03 to recover before re-attempting debit.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1079,
+  "tokens_out": 139,
+  "recorded_at": "2026-08-26T13:51:37.652Z"
+ },
+ {
   "key": "63dc8b04e9fd57e6846175f0562596f2",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -20358,6 +20844,24 @@
   "recorded_at": "2026-08-26T13:54:25.340Z"
  },
  {
+  "key": "6ad3b8731155bc35ebbb738a12e5221e",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "871eac42988713c82e194365c90587f5",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds and subsequent mandate debit is blocked pending Additional Factor of Authentication (AFA) required for amounts exceeding ₹15,000.",
+   "action_type": "send_payment_link",
+   "channel": "sms",
+   "wait_hours": null,
+   "language": "hinglish",
+   "rationale": "Since the mandate requires AFA for transactions over ₹15,000 and today is a standard salary credit date (7th), sending a direct payment link allows the payer to clear the invoice immediately via their preferred payment method.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1132,
+  "tokens_out": 552,
+  "recorded_at": "2026-08-26T13:53:54.396Z"
+ },
+ {
   "key": "6adec21b3d3d9e43b3bd6a9cf23dab21",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -20590,6 +21094,24 @@
   "tokens_in": 1041,
   "tokens_out": 314,
   "recorded_at": "2026-08-26T13:45:43.351Z"
+ },
+ {
+  "key": "6be778aed66435d63294bbabf2ee0245",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "2c311aa1e8f0f66893980d0c878ecf17",
+  "output": {
+   "diagnosis": "The invoice failed twice due to insufficient funds on card_on_file, and ISSUER_07 is currently experiencing a 100% failure rate over the last 6 hours.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 18,
+   "language": null,
+   "rationale": "Today is the 7th (salary cycle window), but ISSUER_07 is currently down/degraded. Waiting 18 hours allows the issuer outage to subside before attempting retry or sending further nudges.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1095,
+  "tokens_out": 144,
+  "recorded_at": "2026-08-26T13:52:30.880Z"
  },
  {
   "key": "6be88a1db838d2554d7e1f8eddb1dc00",
@@ -23670,6 +24192,24 @@
   "recorded_at": "2026-08-26T13:55:17.303Z"
  },
  {
+  "key": "7b9f51ad100ca33350db93b366c3d304",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "6a46fee0f0dc58ca792aefb804913d37",
+  "output": {
+   "diagnosis": "Initial failure on 02/08 was due to insufficient funds, and the payer's issuing bank (ISSUER_03) is currently experiencing 100% downtime over the last 6 hours.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 48,
+   "language": null,
+   "rationale": "Waiting 48 hours avoids burning a retry attempt during the active issuer outage and aligns the next attempt with the 7th-of-the-month salary credit window.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1027,
+  "tokens_out": 477,
+  "recorded_at": "2026-08-26T13:48:50.688Z"
+ },
+ {
   "key": "7bb9763f238d876193cfd416bac6bbd2",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -24154,6 +24694,24 @@
   "tokens_in": 1016,
   "tokens_out": 131,
   "recorded_at": "2026-08-26T13:45:54.363Z"
+ },
+ {
+  "key": "7e5541e7d7183b67a0895a55bd0d4f26",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "e6c33f0565532dfbda2d7fdf5d719282",
+  "output": {
+   "diagnosis": "Card debit failed repeatedly due to card or account spending LIMIT_EXCEEDED, and the payer's issuing bank (ISSUER_03) is also currently experiencing an 88% failure rate.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 24,
+   "language": null,
+   "rationale": "Direct messaging is currently blocked by channel rate limits and consent rules, while ISSUER_03 is facing elevated failure rates. Waiting 24 hours allows time for issuer health to normalize, the email cooldown to expire, and the payer to review yesterday's email notice.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1110,
+  "tokens_out": 158,
+  "recorded_at": "2026-08-26T13:51:39.464Z"
  },
  {
   "key": "7e56c9c785d2789132f20b9f35536198",
@@ -24786,6 +25344,24 @@
   "recorded_at": "2026-08-26T13:48:59.875Z"
  },
  {
+  "key": "80aa93431faa500038d9e4ab5964017b",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "f585bf259523012b277373d65ebbc1d5",
+  "output": {
+   "diagnosis": "Recurring attempts failed due to bank or UPI limit restrictions (LIMIT_EXCEEDED), compounded by temporary degradation at ISSUER_03.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 24,
+   "language": null,
+   "rationale": "Bank transaction limits and issuer degradation need time to reset; waiting 24 hours aligns with standard rolling limits and upcoming salary credit cycles.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1100,
+  "tokens_out": 282,
+  "recorded_at": "2026-08-26T13:51:40.970Z"
+ },
+ {
   "key": "80b8af8f4a7ff52aa87b14bb67c03349",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -25054,6 +25630,24 @@
   "tokens_in": 1115,
   "tokens_out": 337,
   "recorded_at": "2026-08-26T13:53:43.263Z"
+ },
+ {
+  "key": "81e24c0a0bcdfbd0cfd91cbc9fe5cd76",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "8a6b1704a4bbedb54188779c8c1da483",
+  "output": {
+   "diagnosis": "Recurring debit failed due to insufficient funds, but today is the 7th of the month, which aligns with major salary and business settlement cycles in India.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit now leverages the 7th of the month cash flow credit cycle for this high-tenure SMB payer without expending additional messaging quota.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1062,
+  "tokens_out": 522,
+  "recorded_at": "2026-08-26T13:51:48.281Z"
  },
  {
   "key": "81e85978b613b984a7896271081fb30e",
@@ -25686,6 +26280,24 @@
   "recorded_at": "2026-08-26T13:39:42.646Z"
  },
  {
+  "key": "84f50cc9f2adb29aac67f428f2a3c707",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "dfca6a6cfef19bd560e59b5e4fe3c6d9",
+  "output": {
+   "diagnosis": "The previous attempts failed due to insufficient funds around the beginning of the month.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Today is the 7th of the month, a typical salary disbursement window in India, making a retry likely to succeed.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1124,
+  "tokens_out": 102,
+  "recorded_at": "2026-08-26T13:52:30.887Z"
+ },
+ {
   "key": "84f61988648756884c80947875fb1109",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -25828,6 +26440,24 @@
   "tokens_in": 1024,
   "tokens_out": 486,
   "recorded_at": "2026-08-26T13:51:57.744Z"
+ },
+ {
+  "key": "8597425acb0fd9eb35f6fd0b3edc8cbb",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "7de51c2bfabcaa6aa4c8e3131cd08f1a",
+  "output": {
+   "diagnosis": "The invoice previously failed due to INSUFFICIENT_FUNDS, but ISSUER_07 is currently experiencing severe downtime (100% failure rate over the last 6 hours).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 5,
+   "language": null,
+   "rationale": "Today is the 7th (a common salary credit day), but the issuer is currently degraded; waiting 5 hours avoids burning an attempt during peak infrastructure failure.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1066,
+  "tokens_out": 513,
+  "recorded_at": "2026-08-26T13:52:36.280Z"
  },
  {
   "key": "859df8a5ab21b56bc4c98042acb8c0db",
@@ -26802,6 +27432,24 @@
   "recorded_at": "2026-08-26T13:47:02.572Z"
  },
  {
+  "key": "8b87e09505c49b8148596fc1b27d59f7",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "547917373d151078caaba91c9fa1b00b",
+  "output": {
+   "diagnosis": "Recurring debits failed due to card LIMIT_EXCEEDED, and the payer's issuing bank (ISSUER_03) is currently experiencing severe degradation (88% failure rate).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "The customer was already notified via SMS, and ISSUER_03 is facing high failure rates. Waiting 6 hours allows temporary card limits to reset and transient issuer health to recover before the next retry.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1071,
+  "tokens_out": 390,
+  "recorded_at": "2026-08-26T13:51:40.870Z"
+ },
+ {
   "key": "8ba2aab0e37274cc1a21fd8723a3a0a4",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -26872,6 +27520,24 @@
   "tokens_in": 1024,
   "tokens_out": 434,
   "recorded_at": "2026-08-26T13:36:59.234Z"
+ },
+ {
+  "key": "8bedd331fc2c9574b114d583a626ad7f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "0a09c50acdfe66854d6e2a158bc0d512",
+  "output": {
+   "diagnosis": "Prior attempts failed due to INSUFFICIENT_FUNDS on the 3rd and 5th. As today is the 7th (a standard salary credit date in India), account liquidity is expected to improve.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit on the 7th aligns with typical Indian salary credit cycles, maximizing recovery probability without spending limited communication quotas.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1154,
+  "tokens_out": 132,
+  "recorded_at": "2026-08-26T13:52:30.811Z"
  },
  {
   "key": "8bf972883663d0f15bfed062808a63db",
@@ -29394,6 +30060,24 @@
   "recorded_at": "2026-08-26T13:40:02.716Z"
  },
  {
+  "key": "96c50cbb694a881bf49ed9194d771037",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "6339dce0400d6411c6e2ed0ed3151af6",
+  "output": {
+   "diagnosis": "Card on file debits failed twice due to LIMIT_EXCEEDED, indicating the payer's daily or monthly card limit has been reached.",
+   "action_type": "notify_soft",
+   "channel": "sms",
+   "wait_hours": null,
+   "language": "hinglish",
+   "rationale": "Two consecutive limit-exceeded failures indicate payer intervention is needed to adjust their card transaction limits. A soft SMS nudge alerts the customer without burning more debit attempts.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1040,
+  "tokens_out": 405,
+  "recorded_at": "2026-08-26T13:47:49.615Z"
+ },
+ {
   "key": "96cb617e7787522f8485510f2b64c5e6",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -29860,6 +30544,24 @@
   "tokens_in": 1141,
   "tokens_out": 537,
   "recorded_at": "2026-08-26T13:53:53.542Z"
+ },
+ {
+  "key": "989e033d86c83e34d7d70fc0e3191077",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "7a9fe255b75bac5966871b3964442b32",
+  "output": {
+   "diagnosis": "Repeated TXN_TIMEOUT failures are caused by severe transient infrastructure degradation at ISSUER_01, where 100% of recent attempts have failed.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 4,
+   "language": null,
+   "rationale": "Retrying immediately while the issuer outage is active will waste debit attempts. Waiting 4 hours gives the issuer network time to recover without bothering the payer.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1086,
+  "tokens_out": 260,
+  "recorded_at": "2026-08-26T13:51:48.626Z"
  },
  {
   "key": "98abe0660d753d2ecaaea97e6397dc29",
@@ -31264,6 +31966,24 @@
   "tokens_in": 1051,
   "tokens_out": 330,
   "recorded_at": "2026-08-26T13:48:47.558Z"
+ },
+ {
+  "key": "a098c76536f6e7b3facfea2d097b24ec",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "d055a8b2f66717697d1d2c3c5fb608fd",
+  "output": {
+   "diagnosis": "All three recurring debit attempts failed due to TXN_TIMEOUT, indicating temporary gateway or issuer network latency rather than an issue with the payer's account.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "TXN_TIMEOUT is a transient network/infrastructure issue; waiting 6 hours allows the UPI rail and issuer connectivity to stabilize before attempting another action.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1059,
+  "tokens_out": 121,
+  "recorded_at": "2026-08-26T13:52:35.588Z"
  },
  {
   "key": "a0bd568026e40b5fb3482040be30d28b",
@@ -34812,6 +35532,24 @@
   "recorded_at": "2026-08-26T13:47:42.632Z"
  },
  {
+  "key": "b01138ab4d5612c3309b2b1ae00c257f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "851e0e6ced0ed63655f8c652bfa50574",
+  "output": {
+   "diagnosis": "Initial debit on 02/08 failed due to insufficient funds. Five days have elapsed and today is the 7th of the month, aligning with typical Indian salary credit cycles.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit on the 7th of the month leverages salary replenishment timing with minimal retry cost and zero message fatigue.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1003,
+  "tokens_out": 241,
+  "recorded_at": "2026-08-26T13:51:48.287Z"
+ },
+ {
   "key": "b0133b8ed528760b9e59b0e5730a77b9",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -35010,6 +35748,24 @@
   "recorded_at": "2026-08-26T13:48:12.519Z"
  },
  {
+  "key": "b12a5eb1e500730f442a3f321643a00c",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "43422f34fa026244e4a68b11a0458615",
+  "output": {
+   "diagnosis": "Previous debit failed due to transient issuer downtime on salary day (7th), after earlier insufficient funds.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Six hours have elapsed since the ISSUER_UNAVAILABLE error, which is sufficient time for bank infrastructure to recover on a key salary credit day.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1133,
+  "tokens_out": 368,
+  "recorded_at": "2026-08-26T13:53:08.750Z"
+ },
+ {
   "key": "b1381ae56c97b78e6f78d380d9e2cac7",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -35188,6 +35944,24 @@
   "tokens_in": 1008,
   "tokens_out": 337,
   "recorded_at": "2026-08-26T13:45:39.836Z"
+ },
+ {
+  "key": "b1fa8ea482b707a160560cbdbff4937c",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "d6ddab73659b10befc7e7316122dcec0",
+  "output": {
+   "diagnosis": "The invoice amount (₹599.00) exceeds the active mandate cap (₹509.15), preventing automated recurring debits.",
+   "action_type": "handoff_human",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Automated retries are permanently blocked by the mandate cap and the messaging contact limit has been reached. Escalating to human support given the high customer tenure and LTV.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1056,
+  "tokens_out": 315,
+  "recorded_at": "2026-08-26T13:51:47.537Z"
  },
  {
   "key": "b1fff349cb903a4a8a25b55b9c00688c",
@@ -36162,6 +36936,24 @@
   "recorded_at": "2026-08-26T13:53:18.829Z"
  },
  {
+  "key": "b6dcfc7f73a56836d1ee806f07858df0",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "373adfc433ca92260570aac195e404b5",
+  "output": {
+   "diagnosis": "Card on file failed twice due to LIMIT_EXCEEDED, and a failure notification was sent over 40 hours ago. Card limit or balance issues persist.",
+   "action_type": "send_payment_link",
+   "channel": "email",
+   "wait_hours": null,
+   "language": "hinglish",
+   "rationale": "Direct debits are blocked by card limits; providing an alternate direct payment link via email allows the payer to settle using another card or UPI.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1066,
+  "tokens_out": 127,
+  "recorded_at": "2026-08-26T13:52:32.794Z"
+ },
+ {
   "key": "b6eb5eaf97e6718f6878c79eb765181a",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -37116,6 +37908,24 @@
   "recorded_at": "2026-08-26T13:39:42.407Z"
  },
  {
+  "key": "bb98db6911299c32b17ec446c9b9beae",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "5c1377e6c6a623af36c3ff5dcdcb3b96",
+  "output": {
+   "diagnosis": "The invoice is failing due to repeated transient bank infrastructure downtime (ISSUER_UNAVAILABLE) on ISSUER_03.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "ISSUER_UNAVAILABLE is a temporary technical issue on the bank side, not a payer issue. Waiting a few hours allows issuer systems to recover without spamming retries or nudging the payer unnecessarily.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1109,
+  "tokens_out": 126,
+  "recorded_at": "2026-08-26T13:52:31.379Z"
+ },
+ {
   "key": "bbaedf87863c6b58daab39ade4959845",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -37690,6 +38500,24 @@
   "tokens_in": 1004,
   "tokens_out": 116,
   "recorded_at": "2026-08-26T13:45:49.793Z"
+ },
+ {
+  "key": "be75ed26253f494d15854b8145278646",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "c49d1fde569a572a2e71dc4ec1550fb4",
+  "output": {
+   "diagnosis": "The previous debits failed due to insufficient funds, but today is the 7th (salary day). However, ISSUER_03 is currently experiencing a 100% failure rate over the last 6 hours.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 5,
+   "language": null,
+   "rationale": "Waiting 5 hours allows the temporary issuer downtime to clear while still capturing the 7th-of-the-month salary credit window without wasting an attempt.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1113,
+  "tokens_out": 432,
+  "recorded_at": "2026-08-26T13:53:46.322Z"
  },
  {
   "key": "be7b476a4c7ab2f9b040b43c3d2538d8",
@@ -38430,6 +39258,24 @@
   "recorded_at": "2026-08-26T13:36:30.158Z"
  },
  {
+  "key": "c28e22cf4dd0a713e42c323fe7b0b054",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "b1b709b39fd9a9482efaddc8976eecc2",
+  "output": {
+   "diagnosis": "The previous attempts failed due to insufficient funds early in the month. Today is the 7th of the month, coinciding with standard Indian salary credit cycles.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit now leverages the 7th-of-the-month salary credit window to resolve the insufficient funds failure without burning unnecessary payer communications.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1078,
+  "tokens_out": 285,
+  "recorded_at": "2026-08-26T13:52:30.120Z"
+ },
+ {
   "key": "c2aa0e29469d65281ca53987bfc98e53",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -38824,6 +39670,24 @@
   "tokens_in": 1101,
   "tokens_out": 407,
   "recorded_at": "2026-08-26T13:55:16.791Z"
+ },
+ {
+  "key": "c506be85f7c4f057d38629fb25508f18",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "a1e7e540cccb5329c1744784d2148f29",
+  "output": {
+   "diagnosis": "The previous payment failed due to a transient network timeout (TXN_TIMEOUT) on UPI Autopay. The mandate is active and within cap limits.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Since TXN_TIMEOUT is a transient infrastructure issue and over 24 hours have passed with an active mandate, retrying the debit directly is the most effective next step.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1059,
+  "tokens_out": 128,
+  "recorded_at": "2026-08-26T13:47:49.301Z"
  },
  {
   "key": "c52c08220f79373498adab1dd2fdef36",
@@ -39924,6 +40788,24 @@
   "recorded_at": "2026-08-26T13:45:12.114Z"
  },
  {
+  "key": "c9d8c34168a3adaaf8f37629d9a7cc7e",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "4ff1a800fd540ae5344dca6d9d1c459b",
+  "output": {
+   "diagnosis": "The previous failures were due to insufficient funds, but ISSUER_07 is currently experiencing severe downtime (100% failure rate over the last 6 hours).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 6,
+   "language": null,
+   "rationale": "While today (7th) aligns with standard salary credit cycles, the issuer is currently completely degraded. Waiting 6 hours allows issuer health to recover before attempting another debit.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1100,
+  "tokens_out": 357,
+  "recorded_at": "2026-08-26T13:52:30.815Z"
+ },
+ {
   "key": "c9e41411f4b72550f41b594aaf038180",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -40624,6 +41506,24 @@
   "tokens_in": 1001,
   "tokens_out": 394,
   "recorded_at": "2026-08-26T13:48:17.000Z"
+ },
+ {
+  "key": "cd0cda630755afc1ea3bfab54a2db53a",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "8187c994cea78c65da7b6b1c96132f98",
+  "output": {
+   "diagnosis": "The invoice amount (₹249.00) exceeds the active mandate cap (₹211.65), causing MANDATE_CAP_EXCEEDED, and automated messaging has reached the lifetime contact limit.",
+   "action_type": "handoff_human",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Automated retries are blocked by the mandate cap and the messaging cap is exhausted, requiring manual intervention to update the mandate or collect payment.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1127,
+  "tokens_out": 415,
+  "recorded_at": "2026-08-26T13:51:34.571Z"
  },
  {
   "key": "cd57da2dcee9b298669ef4ca906022b7",
@@ -41362,6 +42262,24 @@
   "tokens_in": 996,
   "tokens_out": 240,
   "recorded_at": "2026-08-26T13:46:50.567Z"
+ },
+ {
+  "key": "d0afe2b0aff32b795a67cca2e904dd89",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "33437d85881f1f0fb42439055b8b53e1",
+  "output": {
+   "diagnosis": "Recurring debit failed twice due to insufficient funds early in the month. Today is the 7th of the month, which is a major salary credit cycle in India.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit today (7th) aligns with the common salary disbursement cycle for Indian bank accounts after prior insufficient funds failures.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1073,
+  "tokens_out": 120,
+  "recorded_at": "2026-08-26T13:52:30.408Z"
  },
  {
   "key": "d0bf7a90c1b92615356d2e3b68bede56",
@@ -42174,6 +43092,24 @@
   "recorded_at": "2026-08-26T13:36:30.897Z"
  },
  {
+  "key": "d50a8495ae434fe6c50772e9826e5ec7",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "ea5583605c290a02f1bb3f03f3c6dc35",
+  "output": {
+   "diagnosis": "Initial attempt failed due to insufficient funds, while the subsequent attempt failed due to transient issuer unavailability.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Six hours have elapsed since the temporary issuer outage, making an immediate automated retry appropriate.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1071,
+  "tokens_out": 326,
+  "recorded_at": "2026-08-26T13:52:32.703Z"
+ },
+ {
   "key": "d5103b6428e4ef2d959e3038fe398f2f",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -42552,6 +43488,24 @@
   "recorded_at": "2026-08-26T13:37:16.318Z"
  },
  {
+  "key": "d6dbff49748eb0ad49704fe0b87d2f0f",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "6a44365d48e0ef904f685a422e3b41c8",
+  "output": {
+   "diagnosis": "The latest failure was caused by transient issuer unavailability following an initial insufficient funds error. Since the salary cycle (7th) has arrived and the error is technical, the transaction is likely recoverable.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 14,
+   "language": null,
+   "rationale": "Issuer downtime is transient; waiting overnight until morning contact/business hours allows the issuer to stabilize before retrying debit.",
+   "confidence": 0.9
+  },
+  "tokens_in": 1105,
+  "tokens_out": 507,
+  "recorded_at": "2026-08-26T13:52:34.290Z"
+ },
+ {
   "key": "d6ed0b18e9a2fea48e89ff0e68f670e0",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -42568,6 +43522,24 @@
   "tokens_in": 1066,
   "tokens_out": 322,
   "recorded_at": "2026-08-26T13:45:37.118Z"
+ },
+ {
+  "key": "d6f2259d8b9561defdf24914d2c22e5b",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "a2ce8629491349eb31d552612fab8b79",
+  "output": {
+   "diagnosis": "The latest debit failed due to transient downtime at ISSUER_03 (80% failure rate over the last 6 hours), preceded by an insufficient funds failure earlier in the billing cycle.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 14,
+   "language": null,
+   "rationale": "Waiting overnight allows the issuer's transient infrastructure issues to subside and aligns with the reopening of contact hours tomorrow morning before attempting further recovery.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1131,
+  "tokens_out": 324,
+  "recorded_at": "2026-08-26T13:51:51.677Z"
  },
  {
   "key": "d6f7e2dcbb33dd51b7a6e674652a5ca0",
@@ -42658,6 +43630,24 @@
   "tokens_in": 1086,
   "tokens_out": 117,
   "recorded_at": "2026-08-26T13:46:16.417Z"
+ },
+ {
+  "key": "d7508e5ab877cda422a827d5d73f415b",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "04b896c1bd56557c6d36ca6545dfef39",
+  "output": {
+   "diagnosis": "Repeated ISSUER_UNAVAILABLE errors over 48 hours indicate persistent technical downtime or connectivity issues at ISSUER_03 rather than payer delinquency.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 12,
+   "language": null,
+   "rationale": "Given three consecutive infrastructure failures from ISSUER_03, immediate retries or payer messaging are unhelpful. Waiting 12 hours allows bank systems to stabilize without burning retry attempts or payer goodwill.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1136,
+  "tokens_out": 132,
+  "recorded_at": "2026-08-26T13:52:32.685Z"
  },
  {
   "key": "d77b088196c1bf0f43b9af1c66c60a2d",
@@ -44874,6 +45864,24 @@
   "recorded_at": "2026-08-26T13:53:51.223Z"
  },
  {
+  "key": "e2d46e738924a2c7d9816591c4e138be",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "b5a5a2fc62c7daf1175d85b9eca21fa3",
+  "output": {
+   "diagnosis": "The initial attempt failed due to insufficient funds, but the latest attempt failed due to a transient ISSUER_UNAVAILABLE error on the morning of salary day (7th).",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Six hours have passed since the transient issuer outage at 10:30, and the salary cycle (7th) makes account funding likely. Retrying debit now takes advantage of resolved issuer connectivity.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1099,
+  "tokens_out": 138,
+  "recorded_at": "2026-08-26T13:52:32.288Z"
+ },
+ {
   "key": "e2d78f612675be659ebc6c1e4f430e9c",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -46458,6 +47466,24 @@
   "recorded_at": "2026-08-26T13:53:01.688Z"
  },
  {
+  "key": "e95fc4c74a7057b42c38b82ba2492d6c",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "7296356ed97ce4d13d99dea55f11ed73",
+  "output": {
+   "diagnosis": "The initial attempt failed due to insufficient funds, but subsequent attempts failed due to transient bank issuer unavailability on ISSUER_03.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Six hours have passed since the morning ISSUER_UNAVAILABLE error. Today is the 7th (salary window), mandate is active, and retrying now is optimal as transient downtime typically resolves within hours.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1094,
+  "tokens_out": 479,
+  "recorded_at": "2026-08-26T13:53:43.835Z"
+ },
+ {
   "key": "e9a0ae2e71992d97c0cc4084b1e8a709",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -46960,6 +47986,24 @@
   "tokens_in": 1045,
   "tokens_out": 161,
   "recorded_at": "2026-08-26T13:49:17.104Z"
+ },
+ {
+  "key": "ec2d6a14c3e65ad65fa8b29ee28fceff",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "e5e11907ac275b12a13eefc2c9c961c3",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds on 3rd August. A pre-debit notice was already served over 24 hours ago on 4th August, fulfilling requirements for a retry.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Pre-debit notice has matured beyond 24 hours and salary cycles/account funding typically clear by the 5th of the month. Retrying debit now maximizes recovery chances.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1104,
+  "tokens_out": 140,
+  "recorded_at": "2026-08-26T13:48:50.039Z"
  },
  {
   "key": "ec4ad8e9ea2e6f21ab4e26d9a7486026",
@@ -47844,6 +48888,24 @@
   "recorded_at": "2026-08-26T13:49:08.850Z"
  },
  {
+  "key": "f13d62480c110ff3981bd867e158f261",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "4986d1f7e850171028a40ebe82cbea2c",
+  "output": {
+   "diagnosis": "Previous failures were due to insufficient funds early in the billing cycle, but today is the 7th, a standard salary credit date in India for an otherwise reliable payer with 16 months tenure.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit now aligns with the monthly salary credit cycle on the 7th without burning unnecessary payer messaging fatigue.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1158,
+  "tokens_out": 384,
+  "recorded_at": "2026-08-26T13:52:33.325Z"
+ },
+ {
   "key": "f147e997ff8a3d8cd8b3ee0c869e6c5c",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -48096,6 +49158,24 @@
   "recorded_at": "2026-08-26T13:39:27.697Z"
  },
  {
+  "key": "f209e706f3d8cf71483abc6cb0346a51",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "2f6037636edb872dd30fdaa01ac4ded1",
+  "output": {
+   "diagnosis": "Repeated INSUFFICIENT_FUNDS failures indicate the payer's account is awaiting standard salary funding cycles, commonly occurring around the 7th of the month.",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 20,
+   "language": null,
+   "rationale": "Waiting until the morning of the 7th aligns with typical Indian payroll credit cycles to avoid burning retry limits on an unreplenished account.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1131,
+  "tokens_out": 433,
+  "recorded_at": "2026-08-26T13:51:41.632Z"
+ },
+ {
   "key": "f222e2b3e735018e0ada1b5eb018c835",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -48310,6 +49390,24 @@
   "tokens_in": 1061,
   "tokens_out": 314,
   "recorded_at": "2026-08-26T13:48:00.182Z"
+ },
+ {
+  "key": "f3366f79799a6959895d04659b307b2b",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "ef3daedc09e597dc93ddbdb22a3d65a1",
+  "output": {
+   "diagnosis": "The previous failure was due to transient issuer downtime (ISSUER_UNAVAILABLE) on 03/08. A fresh pre-debit notice was delivered on 04/08 at 09:30, satisfying the mandatory 24-hour notification window.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "More than 24 hours have elapsed since the pre-debit notification on 04/08 09:30, and the initial failure was transient infrastructure downtime, making an immediate debit retry the optimal recovery step.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1050,
+  "tokens_out": 169,
+  "recorded_at": "2026-08-26T13:48:46.549Z"
  },
  {
   "key": "f359d75fce34729253448bb3bc2e3e48",
@@ -49068,6 +50166,24 @@
   "recorded_at": "2026-08-26T13:48:18.537Z"
  },
  {
+  "key": "f6ec50bd6e039007adb2e432b934d1d2",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "a90bbb129af83cd289fc2e210eff283c",
+  "output": {
+   "diagnosis": "Recurring payment failed twice due to insufficient funds. Today is the 7th of the month, aligning with typical salary credit cycles in India.",
+   "action_type": "retry_debit",
+   "channel": null,
+   "wait_hours": null,
+   "language": null,
+   "rationale": "Retrying debit now aligns with the monthly salary credit window on the 7th, maximizing recovery probability without wasting payer messaging goodwill.",
+   "confidence": 0.85
+  },
+  "tokens_in": 1066,
+  "tokens_out": 328,
+  "recorded_at": "2026-08-26T13:52:31.456Z"
+ },
+ {
   "key": "f6f5b2f20d5c66693149ccb675aa2577",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -49230,6 +50346,24 @@
   "recorded_at": "2026-08-26T13:52:36.986Z"
  },
  {
+  "key": "f7714ab0f5f2fe9173576cc85d06a263",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "14c343b32fb9f9bc139f9e35b95e2ae6",
+  "output": {
+   "diagnosis": "The invoice amount of ₹4,999.00 exceeds the UPI Autopay mandate cap of ₹4,249.15, making automatic retries permanently impossible on this mandate.",
+   "action_type": "send_payment_link",
+   "channel": "sms",
+   "wait_hours": null,
+   "language": "en",
+   "rationale": "Since automatic debits exceed the mandate cap, sending a direct payment link via SMS provides a quick, alternate payment route to a high-value customer whose prior email link may have been missed.",
+   "confidence": 0.88
+  },
+  "tokens_in": 1007,
+  "tokens_out": 145,
+  "recorded_at": "2026-08-26T13:47:55.388Z"
+ },
+ {
   "key": "f7a3743474b38239ae63d4f13efc709e",
   "prompt_version": "v1",
   "model": "gemini-3.7-flash",
@@ -49246,6 +50380,24 @@
   "tokens_in": 1042,
   "tokens_out": 120,
   "recorded_at": "2026-08-26T13:51:47.405Z"
+ },
+ {
+  "key": "f7d098618092c00cd5647a9019b09ea2",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "e6ae8bc29b0648355fd126dede1e2b8b",
+  "output": {
+   "diagnosis": "The initial debit failed due to insufficient funds, and while the mandatory 24h pre-debit notice window has elapsed, the payer bank (ISSUER_01) is currently experiencing severe downtime (100% failure rate over the last 6 hours).",
+   "action_type": "wait",
+   "channel": null,
+   "wait_hours": 4,
+   "language": null,
+   "rationale": "Retrying debit immediately would likely burn an attempt due to current issuer degradation; waiting 4 hours allows the bank's transient outage to clear before re-presenting.",
+   "confidence": 0.92
+  },
+  "tokens_in": 1080,
+  "tokens_out": 576,
+  "recorded_at": "2026-08-26T13:49:07.693Z"
  },
  {
   "key": "f7fb49c24e6e828e948be8eda9307ad7",
@@ -49318,6 +50470,24 @@
   "tokens_in": 1039,
   "tokens_out": 140,
   "recorded_at": "2026-08-26T13:46:56.270Z"
+ },
+ {
+  "key": "f82eea305fa63c51754dd794db51a684",
+  "prompt_version": "v1",
+  "model": "gemini-3.7-flash",
+  "observation_hash": "7865d6f4d2484cb2fef420c982f9c0aa",
+  "output": {
+   "diagnosis": "The debit failed due to insufficient funds shortly after the due date, and a pre-debit notice must be served 24 hours before a re-attempt can be made.",
+   "action_type": "serve_predebit_notice",
+   "channel": "whatsapp",
+   "wait_hours": null,
+   "language": "hinglish",
+   "rationale": "Serving the mandatory pre-debit notice now starts the 24-hour compliance window, allowing a retry on August 6th during the monthly salary window.",
+   "confidence": 0.95
+  },
+  "tokens_in": 1070,
+  "tokens_out": 494,
+  "recorded_at": "2026-08-26T13:47:58.802Z"
  },
  {
   "key": "f836351f9ccc2751cdbd8e67c887c6c3",

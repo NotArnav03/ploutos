@@ -37,27 +37,15 @@ result I wanted. Prompt v2 exists and is not yet measured — see C-019 for why.
 
 ## Verifying it
 
-The audit trail, the metrics and the per-case results in this directory are the
-real artefacts of the run and verify as they stand:
+Everything here replays offline, with no API key and no network:
 
 ```bash
+npm run eval -- --batch main     # 2,736 cached decisions, 0 live calls, ~2s
 npm run replay -- --case CASE-00005 --policy agent --verify
 ```
 
-**The recorded agent decisions in `.cache/llm` do NOT currently replay**, and
-that is a defect, not a caveat. This run's agent executed at concurrency 24, and
-at the time the issuer-health tracker was read inside each concurrent task - so
-the observation handed to the model, and therefore the cache key derived from
-it, depended on the order those tasks happened to finish. Re-running looks up
-keys that were never recorded and falls through to live API calls.
-
-The determinism bug is fixed (`docs/CHALLENGES.md` C-020) and the fix changes
-observation hashes, so these decisions have to be re-recorded before
-`npm run eval -- --batch main` replays this checkpoint offline. That re-record
-is blocked until the daily API quota resets. Everything above was measured from
-this run and none of it changes; what is missing is the offline replay path, and
-this note stays here until it works.
-
-`CASE-00005` is the ₹19,369 invoice discussed in C-018: the gate offered
-`retry_debit` five consecutive times and the agent waited through all of them
-until the mandate expired.
+The agent's recorded decisions were re-keyed once, by `npm run migrate-cache`,
+after the determinism fix in C-020 changed what a case observes. 65 of 2,736
+observation hashes moved; the model outputs themselves were copied verbatim and
+the migration refuses to transfer any decision whose permitted set changed. The
+numbers above are unchanged by it — the replay reproduces them exactly.

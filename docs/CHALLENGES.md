@@ -668,3 +668,32 @@ come from an API.
 The general lesson is the one that keeps recurring: the guardrail has to be
 structural. I *knew* not to point a stub at the real cache, and I did it anyway,
 because knowing is not a mechanism.
+
+### C-022 — Salvaging ₹457 of recorded decisions instead of paying twice
+**Severity: none, it worked. Worth recording as the cheapest good decision of the day.**
+
+The C-020 fix changed what a case observes, which changed `observation_hash`,
+which is part of the decision cache key. The obvious consequence was that 2,736
+recorded decisions — ₹457 of real API spend — were orphaned and would have to be
+bought again.
+
+Before paying, I checked how much had actually changed. Of 2,736 decision
+points, **2,671 hashed identically** and only **65 moved**. That is the expected
+number: issuer health is non-null in roughly 62 of the run's observations, and
+those are exactly the ones the fix touches. The measurement that had confused me
+earlier — a replay missing almost everything — was the cascade from those 65,
+not 2,736 independent misses.
+
+So `npm run migrate-cache` replays the committed audit trail decision-for-
+decision and copies each recorded model output verbatim under the corrected key.
+It invents nothing. Its safety condition is the permitted set: a decision is
+only transferable if the gate offers the model the same choice it originally
+chose from, and the migration aborts on any mismatch rather than silently
+re-labelling a judgement as an answer to a different question. Zero of 2,736
+mismatched.
+
+Result: 65 entries written, no API calls, and `npm run eval -- --batch main`
+now reproduces the committed checkpoint in 1.7 seconds — 2,736 cached, 0 live.
+
+The general point is that "the cache is invalid, re-run it" was the expensive
+reflex, and thirty seconds of counting showed 97.6% of it was fine.

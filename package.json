@@ -16,7 +16,8 @@
     "gen": "tsx src/cli/gen.ts",
     "eval": "tsx src/cli/eval.ts",
     "replay": "tsx src/cli/replay.ts",
-    "tune": "tsx src/cli/tune.ts"
+    "tune": "tsx src/cli/tune.ts",
+    "migrate-cache": "tsx src/cli/migrate_cache.ts"
   },
   "dependencies": {
     "yaml": "^2.6.1",
