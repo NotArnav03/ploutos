@@ -98,28 +98,60 @@ describe('agent guards', () => {
     expect(metrics.harm.clean).toBe(true);
   }, 60_000);
 
-  it('falls back deterministically when the model is unreachable', async () => {
-    const broken: Completer = async () => {
-      throw new Error('connection refused');
+  it('falls back deterministically when a call fails now and then', async () => {
+    // One unlucky decision should not end a batch. It falls back to
+    // static-policy, is counted, and eval prints a warning that the run is not
+    // a clean agent result.
+    let n = 0;
+    const flaky: Completer = async () => {
+      if (++n % 4 === 0) throw new Error('connection refused');
+      return {
+        output: {
+          diagnosis: 'd',
+          action_type: 'wait',
+          channel: null,
+          wait_hours: 12,
+          language: null,
+          rationale: 'r',
+          confidence: 0.5,
+        },
+        tokens_in: 1,
+        tokens_out: 1,
+      };
     };
-    const { run, agent, metrics } = await runWithStub(broken, 'broken');
+    const { run, agent, metrics } = await runWithStub(flaky, 'flaky');
     expect(agent.stats.api_errors).toBeGreaterThan(0);
+    expect(agent.stats.last_error).toContain('connection refused');
     expect(metrics.harm.clean).toBe(true);
-    // The run still completes and still recovers money - via static-policy,
-    // which is why eval prints a loud warning rather than reporting it as an
-    // agent result.
     expect(run.cases.length).toBe(40);
   }, 60_000);
 
+  it('abandons the run rather than publishing static-policy under the agent label', async () => {
+    // A persistently dead API used to produce a full batch of fallbacks: a row
+    // labelled "agent" whose every number was static-policy's. That is worse
+    // than crashing, because it looks like a result. This is the day the whole
+    // main batch did exactly that against an exhausted quota - 2,713 decisions,
+    // all fallbacks, an agent row byte-identical to the rules engine.
+    const broken: Completer = async () => {
+      throw new Error('connection refused');
+    };
+    await expect(runWithStub(broken, 'broken')).rejects.toThrow(
+      /abandoned after \d+ consecutive API failures/,
+    );
+  }, 60_000);
+
   it('rejects an output that does not satisfy the contract', async () => {
+    // An output that cannot be validated is an API error like any other, so a
+    // model that returns nothing usable for the whole batch is abandoned rather
+    // than quietly replaced by the rules engine.
     const malformed: Completer = async () => ({
       output: { diagnosis: '', action_type: 'wait', confidence: 5 },
       tokens_in: 1,
       tokens_out: 1,
     });
-    const { agent, metrics } = await runWithStub(malformed, 'malformed');
-    expect(agent.stats.api_errors).toBeGreaterThan(0);
-    expect(metrics.harm.clean).toBe(true);
+    await expect(runWithStub(malformed, 'malformed')).rejects.toThrow(
+      /output failed validation/,
+    );
   }, 60_000);
 
   it('does not call the model when only one action is permitted', async () => {

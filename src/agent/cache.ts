@@ -103,11 +103,21 @@ export class DecisionCache {
     return this.entries.size;
   }
 
-  get(key: string): AgentOutput | null {
+  /**
+   * Returns the whole entry, not just the output, so a replayed run can report
+   * the tokens the decision cost when it was recorded.
+   *
+   * Without this a cached replay reports zero tokens and therefore zero model
+   * spend, which would make the cheapest-looking run the one that did no work.
+   * The tokens were really spent, once; the honest reading of a replay is "this
+   * is what producing these decisions cost", and `cache_hit` on the record says
+   * it was not spent again today.
+   */
+  get(key: string): CacheEntry | null {
     const hit = this.entries.get(key);
     if (hit) {
       this.hits++;
-      return hit.output;
+      return hit;
     }
     this.misses++;
     return null;

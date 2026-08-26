@@ -59,6 +59,16 @@ export interface RunResult {
   ledger_path: string;
   ledger_events: number;
   wall_ms: number;
+  /**
+   * Tokens the model decisions in this run cost, summed from the decisions
+   * themselves rather than from a counter on the client. That means the figure
+   * is reconstructible from the committed audit trail by anyone, and comes out
+   * the same on a live run and on a replay of it.
+   */
+  tokens_in: number;
+  tokens_out: number;
+  /** Decisions that came from the model at all, as opposed to forced moves. */
+  model_decisions: number;
 }
 
 export interface RunOptions {
@@ -146,6 +156,13 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
 
   const issuerByName = new Map(world.issuers.map((i) => [i.issuer, i]));
   const health = new IssuerHealthTracker();
+
+  // Summed off the decisions as they are written, so the total matches the
+  // committed audit trail exactly rather than a client-side counter that a
+  // cached replay would report as zero.
+  let tokensIn = 0;
+  let tokensOut = 0;
+  let modelDecisions = 0;
 
   // Seed the health tracker with the failures that put these invoices in the
   // queue. A merchant already has this history when recovery starts.
@@ -309,6 +326,12 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
         };
       }
 
+      if (decision.meta.model !== null) {
+        modelDecisions++;
+        tokensIn += decision.meta.tokens_in ?? 0;
+        tokensOut += decision.meta.tokens_out ?? 0;
+      }
+
       ledger.append(rt, {
         run_id: opts.run_id,
         case_id: rt.case_id,
@@ -432,6 +455,9 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
     ledger_path: opts.ledger_path,
     ledger_events: ledger.written,
     wall_ms: Date.now() - started,
+    tokens_in: tokensIn,
+    tokens_out: tokensOut,
+    model_decisions: modelDecisions,
   };
 }
 

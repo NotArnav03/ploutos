@@ -440,3 +440,145 @@ The general lesson is the one this project keeps re-learning: an instrument is
 not working because it compiles and its tests pass. It is working when you have
 looked at what it actually emitted on real data. I have now been saved four
 separate times by printing something and reading it.
+
+### C-018 — The agent lost to the rules engine, and the reason was in my prompt
+**Severity: high. Cost: ~2 hours. This is the day-6 result.**
+
+First honest five-policy run on the 500-case main batch, prompt v1,
+gemini-3.7-flash, 2,736 decisions, zero API errors, zero gate rejections:
+
+| policy | recovered | of ceiling | net | cases | atts | msgs | esc |
+|---|---|---|---|---|---|---|---|
+| static-policy | ₹5,96,091.90 | 65.2% | ₹5,88,407.77 | 185 | 1215 | 436 | 28 |
+| agent (v1) | ₹5,85,644.72 | 64.1% | ₹5,69,527.56 | 204 | 1081 | 732 | 99 |
+
+The agent lost. Not by much on gross — 1.8% — but by 3.2% on net, and losing
+to a rules engine that thinks for free is losing.
+
+The demo batch had said the opposite: 60 cases, agent at 99.97% of ceiling,
+comfortably ahead of static-policy. That is the entire argument for not
+believing a small batch, and I am glad I wrote the number down as suspicious
+before the big run rather than after.
+
+**Where the money went.** The agent recovered MORE cases than static-policy
+(204 vs 185) and LESS money. It beat static-policy in every invoice size band
+except the largest — and that band is 73% of all value at risk:
+
+| band | n | at risk | static | agent | oracle |
+|---|---|---|---|---|---|
+| ₹0–₹500 | 252 | ₹68,898 | ₹28,356 | ₹29,348 | ₹38,572 |
+| ₹500–₹2,000 | 142 | ₹1,46,858 | ₹59,045 | ₹69,535 | ₹95,609 |
+| ₹2,000–₹10,000 | 41 | ₹2,46,459 | ₹77,487 | ₹88,984 | ₹1,27,980 |
+| **≥ ₹10,000** | **65** | **₹12,44,877** | **₹4,31,204** | **₹3,97,778** | **₹6,51,833** |
+
+Twelve AFA_REQUIRED cases worth ₹2,10,403 were recovered by static-policy and
+lost by the agent. AFA — additional factor of authentication — is what a large
+recurring debit needs before it can be presented, and in this world one
+`request_afa` satisfies it immediately.
+
+The audit trail settles what happened, on CASE-00005, a ₹19,369 invoice:
+
+```
+08-05T09:00 retry_debit=no  [AFA_THRESHOLD: 1936913 is at or above the 1500000 threshold and is not authenticated]
+08-05T09:00   -> request_afa
+08-05T21:00 retry_debit=YES   -> wait
+08-06T04:00 retry_debit=YES   -> wait
+08-06T10:00 retry_debit=YES   -> request_afa
+08-06T22:00 retry_debit=YES   -> wait
+08-07T04:00 retry_debit=YES   -> request_afa
+08-07T16:00 retry_debit=no  [MANDATE_VALIDITY_WINDOW: mandate valid_till 2026-08-07T08:00:00.000Z has passed]
+08-07T16:00   -> handoff_human
+```
+
+The gate offered `retry_debit` five consecutive times. The agent waited, asked
+for authentication it already had, waited again, and handed a ₹19,369 invoice
+to a human eleven hours after the mandate expired. Across all 18 AFA cases it
+sent 53 authentication requests and made 2 presentments.
+
+**This generalises.** Two counts, measured across the whole run:
+
+- The agent waited while `retry_debit` was on the permitted list **500 times
+  across 251 cases, ₹10,04,775 of invoice value**. Static-policy did this zero
+  times.
+- The agent escalated to a human 99 times against static-policy's 28, on seven
+  failure codes static-policy never escalates at all. At ₹150 a handoff that is
+  ₹14,850 against ₹4,200, and every handoff also closes the case to automation.
+
+**The cause was mine, not the model's.** Prompt v1 taught restraint and never
+priced it. It said a failed retry "costs a gateway fee and consumes one of the
+few attempts this invoice is allowed", and it said "recovering nothing is an
+acceptable outcome... stop or escalate". Both true. Neither quantified. A model
+told to be careful, with no sense of what care costs, is careful about a 50
+paise retry fee while a ₹19,369 mandate expires underneath it.
+
+It also never mentioned AFA_REQUIRED once, in a list that explained six other
+failure codes in detail.
+
+Prompt v2 makes three factual additions, none of them a compliance rule and all
+of them things a real merchant knows about their own business: what a
+presentment, a message and a handoff actually cost, in rupees, against the size
+of the invoice; that AFA is unblocked by one request and sits behind an expiring
+mandate; and that escalation is not a free way to be careful.
+
+The honest caveat, stated before the numbers rather than after: this is tuning
+against the batch the result is measured on. The guard is the day-8 plan — five
+seeds and three failure mixes — and a v2 that only wins on main-seed-42 has not
+actually won anything.
+
+### C-019 — A retry policy that turned one exhausted quota into 13,565 wasted requests
+**Severity: high. Cost: 31 minutes of wall clock and most of a day's quota.**
+
+The prompt-v2 re-run finished in thirty-one minutes and reported this:
+
+```
+  ran agent          1877991ms  6719 ledger events
+    0 cached, 0 live call(s) at concurrency 24, 10852 retried, 2713 error(s)
+    !! 2713 decision(s) fell back to static-policy; this run is NOT a clean agent result
+```
+
+Every decision failed. The agent row in the results table came out
+byte-identical to static-policy, because that is exactly what it was.
+
+The cause was a daily quota:
+
+```
+"quotaMetric": "generativelanguage.googleapis.com/generate_requests_per_model_per_day",
+"quotaValue": "10000",
+"retryDelay": "33845s"
+```
+
+Ten thousand requests per model per day on the free tier, and a reset 9.4 hours
+away. Three separate mistakes of mine turned that into a thirty-one minute
+mystery.
+
+**1. My retry policy made the problem five times worse.** A 429 is two different
+events wearing one status code. Per-minute throttling clears in seconds and
+retrying is right. A daily quota does not clear for hours, and every retry
+spends another request against a quota that is already gone. My backoff capped
+at sixty seconds and tried four more times per decision, so 2,713 failed
+decisions became 13,565 wasted requests — and a large part of the quota that
+the *first* half of the run was still legitimately using.
+
+The fix is to read the body rather than the status. Google returns the wait in a
+`RetryInfo` detail, and a wait measured in hours is a wall, not a delay.
+`QuotaExhaustedError` is now thrown immediately and never retried.
+
+**2. The fallback was silently producing a fake result.** Falling back to
+static-policy for one unlucky decision is resilience. Falling back for all 2,713
+is not — it publishes a row labelled "agent" whose every number belongs to the
+rules engine, which is worse than crashing because it looks like a result. There
+is now a breaker: twenty consecutive failures abandons the run. A broken run
+should fail loudly, not publish a lie.
+
+**3. My own tooling would not tell me what went wrong.** Thirty-one minutes of
+failure and the operator saw `2713 error(s)` and no reason. The error text
+existed — `ProviderError` carried the full body — and eval simply never printed
+it. `AgentStats` now carries `last_error` and eval prints it under the warning.
+
+The irony is not lost on me: this project is built around the claim that a
+system should be able to explain its own refusals, and I shipped a client that
+retried into a wall 10,852 times without ever saying what the wall was.
+
+Two tests now pin the new contract: an intermittent failure still falls back and
+completes, and a persistently dead API aborts rather than quietly returning
+static-policy's numbers under the agent's name.

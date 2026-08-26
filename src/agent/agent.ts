@@ -6,7 +6,7 @@ import { staticPolicy } from '../policy/static_policy.js';
 import { DecisionCache, cacheKey, type CacheEntry } from './cache.js';
 import { PROMPT_VERSION, SYSTEM_PROMPT, renderCase } from './prompt.js';
 import { AgentOutputSchema, outputJsonSchema, type AgentOutput } from './schema.js';
-import { AGENT_MODEL, geminiCompleter, type Completer } from './provider.js';
+import { AGENT_MODEL, QuotaExhaustedError, geminiCompleter, type Completer } from './provider.js';
 
 export { AGENT_MODEL, type Completer };
 
@@ -30,9 +30,26 @@ export interface AgentStats {
   retries: number;
   /** Decisions that fell back to static-policy because the API never answered. */
   api_errors: number;
+  /**
+   * Why the last one failed. A run that spends half an hour failing has to be
+   * able to say what went wrong; "2713 error(s)" and nothing else is not a
+   * diagnosis, it is a number.
+   */
+  last_error: string | null;
   tokens_in: number;
   tokens_out: number;
 }
+
+/**
+ * Consecutive failures before the run is abandoned.
+ *
+ * Falling back to static-policy for one unlucky decision is resilience.
+ * Falling back for every decision in the batch is not - it silently produces a
+ * row labelled "agent" whose numbers are static-policy's, which is worse than
+ * crashing because it looks like a result. The breaker exists so that a broken
+ * run fails loudly instead of publishing a lie.
+ */
+const CONSECUTIVE_FAILURE_LIMIT = 20;
 
 /**
  * The agent.
@@ -69,12 +86,14 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
   // Constructed lazily: building the client throws when no credentials are
   // present, and a cache-only replay needs no credentials at all.
   let completer: Completer | null = opts.complete ?? null;
+  let consecutiveFailures = 0;
   const stats: AgentStats = {
     calls: 0,
     cache_hits: 0,
     cache_misses: 0,
     retries: 0,
     api_errors: 0,
+    last_error: null,
     tokens_in: 0,
     tokens_out: 0,
   };
@@ -117,11 +136,14 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
         permitted_channels: permitted.permitted_channels,
       });
 
-      let output = opts.noCache === true ? null : cache.get(key);
-      let cacheHit = output !== null;
+      const cached = opts.noCache === true ? null : cache.get(key);
+      let output: AgentOutput | null = cached?.output ?? null;
+      const cacheHit = cached !== null;
       let latency: number | null = null;
-      let tokensIn: number | null = null;
-      let tokensOut: number | null = null;
+      // What this decision cost, whether it was paid for now or when it was
+      // recorded. Live spend is counted separately, in stats.
+      let tokensIn: number | null = cached?.tokens_in ?? null;
+      let tokensOut: number | null = cached?.tokens_out ?? null;
 
       if (output === null) {
         const started = Date.now();
@@ -151,6 +173,8 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
           }
           output = parsed.data;
 
+          consecutiveFailures = 0;
+
           const entry: CacheEntry = {
             key,
             prompt_version: PROMPT_VERSION,
@@ -167,6 +191,18 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
           // different measured result. Fall back deterministically, count it,
           // and let the reported fallback rate carry the fact.
           stats.api_errors++;
+          stats.last_error = err instanceof Error ? err.message : String(err);
+          consecutiveFailures++;
+
+          // A spent daily quota is not a blip and no amount of falling back
+          // makes the resulting run mean anything.
+          if (err instanceof QuotaExhaustedError) throw err;
+          if (consecutiveFailures >= CONSECUTIVE_FAILURE_LIMIT) {
+            throw new Error(
+              `agent abandoned after ${consecutiveFailures} consecutive API failures; ` +
+                `last error: ${stats.last_error}`,
+            );
+          }
           if (opts.allowFallback === false) throw err;
           const fb = await staticPolicy.decide(input);
           return {

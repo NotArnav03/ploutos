@@ -79,6 +79,26 @@ export interface Metrics {
   recovered_ci_low: Paise;
   recovered_ci_high: Paise;
 
+  // ---- what it cost to run the model, as opposed to what it cost to act
+  //
+  // Zero for every deterministic policy, which is itself part of the
+  // comparison: the agent has to earn its inference bill against a rules engine
+  // that thinks for free.
+  /** Decisions that came from the model rather than being forced moves. */
+  model_decisions: number;
+  inference_tokens_in: number;
+  inference_tokens_out: number;
+  /**
+   * USD. Deliberately not converted into the rupee figures - see
+   * config/costs.yaml. Recomputable from the committed audit trail.
+   */
+  inference_cost_usd: number;
+  /**
+   * Model spend, in USD, per Rs 1,00,000 of value recovered. Two currencies in
+   * one ratio on purpose: both units are named, so it needs no exchange rate.
+   */
+  inference_usd_per_lakh_recovered: number | null;
+
   wall_ms: number;
   ledger_events: number;
 }
@@ -99,6 +119,9 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
 
   const atRisk = sumPaise(cases.map((c) => c.at_risk_paise));
   const recovered = sumPaise(cases.map((c) => c.recovered_paise));
+  // Zero for every deterministic policy. The agent has to earn this against a
+  // rules engine that thinks for free.
+  const inferenceUsd = costs.inferenceCostUsd(run.tokens_in, run.tokens_out);
   const interventionCost = sumPaise(cases.map((c) => c.cost_paise));
 
   const goodwill = sumPaise(
@@ -189,6 +212,12 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
     },
     stops_by_rule: stopsByRule,
     fallback_rate: cases.length === 0 ? 0 : fallbacks / cases.length,
+    model_decisions: run.model_decisions,
+    inference_tokens_in: run.tokens_in,
+    inference_tokens_out: run.tokens_out,
+    inference_cost_usd: inferenceUsd,
+    inference_usd_per_lakh_recovered:
+      recovered === 0 ? null : inferenceUsd / (recovered / 10_000_000),
     stalled_steps: stalledSteps,
 
     recovered_ci_low: ciLow,

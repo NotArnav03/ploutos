@@ -132,9 +132,21 @@ async function main(): Promise<void> {
           (s.calls > 0 ? `, ${perCall.toFixed(0)}ms per decision` : '') +
           `\n`,
       );
+      // What the thinking cost, beside what the acting cost. An agent that
+      // spends more on inference than it recovers is not a recovery system.
+      const m = metrics[metrics.length - 1];
+      if (m) {
+        process.stdout.write(
+          `    $${m.inference_cost_usd.toFixed(2)} of model spend over ${m.model_decisions} decisions` +
+            (m.inference_usd_per_lakh_recovered === null
+              ? `\n`
+              : `, $${m.inference_usd_per_lakh_recovered.toFixed(2)} per Rs 1,00,000 recovered\n`),
+        );
+      }
       if (s.api_errors > 0) {
         process.stdout.write(
-          `    !! ${s.api_errors} decision(s) fell back to static-policy; this run is NOT a clean agent result\n`,
+          `    !! ${s.api_errors} decision(s) fell back to static-policy; this run is NOT a clean agent result\n` +
+            `       last error: ${s.last_error ?? 'unknown'}\n`,
         );
       }
     }

@@ -63,3 +63,23 @@ goodwill:
   # LTV. Attribution is an assumption: we cannot know the contacts caused it.
   cancellation_penalty_bps: 500
   attributed_after_contacts: 3
+
+# ------------------------------------------------------- model inference cost
+# What it costs to run the agent itself, as opposed to what it costs to act.
+#
+# Kept in USD and reported separately from every rupee figure, deliberately.
+# Converting would need an exchange-rate assumption that adds nothing: the
+# useful statement is "$X of model spend per Rs 1,00,000 recovered", which is
+# unambiguous with both units named and needs no FX at all.
+#
+# An agent that costs more to think than it recovers is worthless, so this is
+# reported beside the recovery numbers rather than left as an implementation
+# detail. The token counts it multiplies are summed from the audit trail, so
+# anyone can recompute this figure from the committed ledger.
+inference:
+  model: gemini-3.7-flash
+  # Published list price, read 2026-08-26. Reasoning tokens bill as output,
+  # and on this model they are roughly three quarters of the output on a
+  # typical decision - so the output rate is the one that governs the bill.
+  usd_per_million_input: 0.75
+  usd_per_million_output: 3.75

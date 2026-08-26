@@ -64,6 +64,50 @@ export class ProviderError extends Error {
   }
 }
 
+/**
+ * The daily request quota is gone. Distinct from ProviderError because nothing
+ * about this run can recover from it, and the correct response is to abandon
+ * the run rather than to keep asking.
+ */
+export class QuotaExhaustedError extends Error {
+  constructor(
+    message: string,
+    readonly retryAfterSeconds: number,
+  ) {
+    super(message);
+    this.name = 'QuotaExhaustedError';
+  }
+}
+
+/**
+ * A 429 is two different events wearing one status code.
+ *
+ * Per-minute throttling clears in seconds and retrying is exactly right. A
+ * daily quota does not clear for hours, and retrying spends four more requests
+ * against a quota that is already gone - which is precisely how one exhausted
+ * quota turned 2,713 failed decisions into 13,565 wasted requests. The
+ * difference is in the body, not the status: Google returns the wait in a
+ * RetryInfo detail, and a wait measured in hours is a wall, not a delay.
+ */
+const QUOTA_WALL_SECONDS = 300;
+
+function parseRetryInfo(body: string): { status: string | null; retryAfterSeconds: number | null } {
+  try {
+    const j = JSON.parse(body) as {
+      error?: { status?: string; details?: { '@type'?: string; retryDelay?: string }[] };
+    };
+    const detail = j.error?.details?.find((d) => d['@type']?.endsWith('RetryInfo'));
+    const raw = detail?.retryDelay;
+    const seconds = raw !== undefined ? Number(raw.replace(/s$/, '')) : NaN;
+    return {
+      status: j.error?.status ?? null,
+      retryAfterSeconds: Number.isFinite(seconds) ? seconds : null,
+    };
+  } catch {
+    return { status: null, retryAfterSeconds: null };
+  }
+}
+
 function sleep(ms: number): Promise<void> {
   return new Promise((r) => setTimeout(r, ms));
 }
@@ -130,12 +174,33 @@ export function geminiCompleter(
       }
 
       if (!res.ok) {
-        const detail = (await res.text()).slice(0, 300);
+        const body = await res.text();
+        const info = parseRetryInfo(body);
+
+        if (
+          info.status === 'RESOURCE_EXHAUSTED' &&
+          info.retryAfterSeconds !== null &&
+          info.retryAfterSeconds > QUOTA_WALL_SECONDS
+        ) {
+          const hours = (info.retryAfterSeconds / 3600).toFixed(1);
+          throw new QuotaExhaustedError(
+            `daily quota for ${req.model} is exhausted; it resets in about ${hours}h. ` +
+              `Recorded decisions still replay from .cache/llm without it.`,
+            info.retryAfterSeconds,
+          );
+        }
+
         const retryable = RETRYABLE.has(res.status);
-        lastError = new ProviderError(`HTTP ${res.status}: ${detail}`, res.status, retryable);
+        lastError = new ProviderError(`HTTP ${res.status}: ${body.slice(0, 300)}`, res.status, retryable);
         if (!retryable || attempt === MAX_ATTEMPTS) throw lastError;
         opts.onRetry?.(res.status);
-        await sleep(backoffMs(attempt, res.headers.get('retry-after')));
+        // The server's own advice beats our guess, and for a short throttle it
+        // is in the body rather than in a Retry-After header.
+        await sleep(
+          info.retryAfterSeconds !== null
+            ? Math.min(info.retryAfterSeconds * 1000, 60_000)
+            : backoffMs(attempt, res.headers.get('retry-after')),
+        );
         continue;
       }
 

@@ -50,6 +50,11 @@ const CostsFileSchema = z.object({
     cancellation_penalty_bps: z.number().int().nonnegative(),
     attributed_after_contacts: z.number().int().nonnegative(),
   }),
+  inference: z.object({
+    model: z.string(),
+    usd_per_million_input: z.number().nonnegative(),
+    usd_per_million_output: z.number().nonnegative(),
+  }),
 });
 export type CostsFile = z.infer<typeof CostsFileSchema>;
 
@@ -73,6 +78,27 @@ const BPS = 10_000;
 
 export class CostModel {
   constructor(private readonly costs: CostsFile = loadCosts()) {}
+
+  /**
+   * What the model decisions in a run cost, in USD.
+   *
+   * Not converted to paise and not folded into `net_recovered_paise`. The
+   * mechanical costs in this file are rupees a merchant pays a gateway; this is
+   * dollars paid to a model vendor, and silently adding them at some assumed
+   * exchange rate would put an unstated assumption inside the headline number.
+   * It is reported beside the rupee figures instead.
+   */
+  inferenceCostUsd(tokensIn: number, tokensOut: number): number {
+    const p = this.costs.inference;
+    return (
+      (tokensIn / 1_000_000) * p.usd_per_million_input +
+      (tokensOut / 1_000_000) * p.usd_per_million_output
+    );
+  }
+
+  get inferenceModel(): string {
+    return this.costs.inference.model;
+  }
 
   messageCost(channel: Channel): Paise {
     return paise(this.costs.channel_cost_paise[channel]);

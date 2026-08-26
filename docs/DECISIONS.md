@@ -244,3 +244,28 @@ better is exactly what the golden-hash test exists to prevent, and the first
 time that guardrail costs something is the worst possible time to route around
 it. If the world ever grows a full presentment stream, it will be for a reason
 that is not "the agent's inputs looked thin".
+
+### D-017 — Model spend is reported in dollars, beside the rupees, never inside them
+**2026-08-26**
+
+The agent costs money to think, and an agent that spends more on inference than
+it recovers is not a recovery system. So `metrics.json` now carries
+`inference_tokens_in`, `inference_tokens_out`, `inference_cost_usd` and
+`inference_usd_per_lakh_recovered`, and every deterministic policy reports zero
+— which is the point of the comparison, since the rules engine thinks for free.
+
+Two choices worth writing down.
+
+**Not converted into the rupee figures.** The mechanical costs in
+`config/costs.yaml` are rupees a merchant pays a gateway. Inference is dollars
+paid to a model vendor. Folding them together needs an exchange rate, which is
+an unstated assumption inside a headline number, and the useful statement needs
+no FX at all: "$X of model spend per ₹1,00,000 recovered" names both units.
+
+**Summed off the decisions, not off a counter in the client.** Token counts come
+from the audit records, so the figure is recomputable from the committed ledger
+by anyone who clones the repo. That also required making a cache hit report the
+tokens its decision cost when it was recorded — otherwise a replayed run reports
+zero spend, and the cheapest-looking run would be the one that did no work. The
+tokens were really spent, once; `cache_hit` on the record says it was not spent
+again today.
