@@ -10,6 +10,7 @@ import { makeAgent, type Completer } from '../src/agent/agent.js';
 import { runBatch } from '../src/eval/runner.js';
 import { computeMetrics } from '../src/metrics/compute.js';
 import { generateWorld } from '../src/world/generator.js';
+import { readLedgerFile } from '../src/ledger/ledger.js';
 
 const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-conc-'));
 
@@ -46,8 +47,9 @@ function jitteryStub(): Completer {
 }
 
 async function runAt(concurrency: number) {
+  const ledgerPath = path.join(tmp, `conc-${concurrency}.jsonl`);
   const run = await runBatch({
-    world: generateWorld({ seed: 31, size: 50 }).world,
+    world: generateWorld({ seed: 31, size: 400 }).world,
     policy: makeAgent({
       complete: jitteryStub(),
       cache: new DecisionCache(path.join(tmp, `c-${concurrency}`)),
@@ -57,9 +59,9 @@ async function runAt(concurrency: number) {
     taxonomy: new TaxonomyIndex(),
     costs: new CostModel(),
     run_id: 'conc',
-    ledger_path: path.join(tmp, `conc-${concurrency}.jsonl`),
+    ledger_path: ledgerPath,
     seed: 31,
-  concurrency,
+    concurrency,
   });
   const metrics = computeMetrics({
     run,
@@ -69,7 +71,11 @@ async function runAt(concurrency: number) {
   });
   // wall_ms is how long the run took, not a property of the run.
   const { wall_ms: _w, ...rest } = metrics;
-  return { cases: run.cases, metrics: rest };
+  const observations = readLedgerFile(ledgerPath)
+    .filter((e) => e.event_type === 'eligibility')
+    .map((e) => `${e.case_id}@${e.ts_sim}:${e.observation_hash}`)
+    .sort();
+  return { cases: run.cases, metrics: rest, observations };
 }
 
 describe('concurrency', () => {
@@ -81,5 +87,18 @@ describe('concurrency', () => {
 
     expect(eight.cases).toEqual(one.cases);
     expect(eight.metrics).toEqual(one.metrics);
-  }, 120_000);
+  }, 240_000);
+
+  it('produces identical observation hashes at 1 and at 8', async () => {
+    // Stronger than the metrics check above, and the one that actually matters
+    // for reproducibility. The observation hash is part of the decision cache
+    // key, so if it drifts with interleaving, a committed run stops replaying:
+    // every lookup misses and `npm run eval` quietly turns into thousands of
+    // live API calls. That happened, and the metrics test above passed
+    // throughout, because no policy reads the field that was drifting.
+    const [one, eight] = await Promise.all([runAt(1), runAt(8)]);
+
+    expect(eight.observations.length).toBeGreaterThan(0);
+    expect(eight.observations).toEqual(one.observations);
+  }, 240_000);
 });

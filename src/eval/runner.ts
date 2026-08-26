@@ -193,6 +193,27 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
       .filter((rt) => !isClosed(rt) && isBefore(rt.next_wake, horizonEnd))
       .sort((a, b) => (a.next_wake < b.next_wake ? -1 : a.next_wake > b.next_wake ? 1 : a.case_id < b.case_id ? -1 : 1));
 
+    // Issuer health is read for the whole wave here, in the wave's own sorted
+    // order, before any decision in it runs.
+    //
+    // It is the one thing a case observes that other cases can change, so
+    // reading it inside the task made the observation depend on the order those
+    // tasks happened to finish - which at concurrency > 1 depends on network
+    // latency. Two runs of the same seed then produced different
+    // observation_hash values for the same case at the same simulated instant,
+    // every cached decision missed, and `npm run eval` silently became
+    // thousands of live API calls instead of a replay. The metrics were
+    // identical either way, because no policy reads issuer health - which is
+    // exactly why it went unnoticed until a replay failed.
+    //
+    // Snapshotting makes the observation a function of the seed and the
+    // simulated clock alone, which is what it always claimed to be.
+    const healthByCase = new Map<string, ReturnType<typeof health.health>>();
+    for (const rt of pending) {
+      const wc = caseById.get(rt.case_id);
+      if (wc) healthByCase.set(rt.case_id, health.health(wc.latent.issuer, rt.next_wake));
+    }
+
     await forEachConcurrent(pending, opts.concurrency ?? 1, async (rt) => {
       const used = steps.get(rt.case_id) ?? 0;
       if (used >= MAX_STEPS_PER_CASE) {
@@ -209,7 +230,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
       // ---- world events the merchant can now observe
       applyWorldEvents(wc, rt, now);
 
-      const issuerHealth = health.health(wc.latent.issuer, now);
+      const issuerHealth = healthByCase.get(rt.case_id) ?? null;
       const obs = observe({
         source: wc,
         runtime: rt,

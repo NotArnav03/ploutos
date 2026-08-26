@@ -582,3 +582,89 @@ retried into a wall 10,852 times without ever saying what the wall was.
 Two tests now pin the new contract: an intermittent failure still falls back and
 completes, and a persistently dead API aborts rather than quietly returning
 static-policy's numbers under the agent's name.
+
+### C-020 — The replay didn't, and the test that should have caught it was too small
+**Severity: high. Cost: ~2 hours. Found by running the command the README tells a reviewer to run.**
+
+After reverting the unmeasured v2 prompt, I ran `npm run eval -- --batch main`
+to check the repo still reproduced its own committed numbers. It didn't. It
+started making live API calls, hit the exhausted quota, and died.
+
+That is the repo's central claim failing: clone it, run one command, get the
+committed results back without an API key.
+
+**Root cause.** `issuer_health` is the one field in a case observation that
+other cases can change — it is computed from the fleet's shared decline stream.
+It was read *inside* each concurrent task, so at concurrency > 1 the value
+depended on which other cases in the same wave had already presented. That made
+`observation_hash` a function of network latency. The hash is part of the
+decision cache key, so every lookup on a re-run missed.
+
+Measured, with static-policy on the 500-case batch:
+
+| | pre-fix | post-fix |
+|---|---|---|
+| same run twice at concurrency 1 | identical | identical |
+| concurrency 1 vs concurrency 24 | **different** | identical |
+| reproduces the committed ledger | true (at c=1) | n/a, hashes moved |
+
+That table also explains why only the agent broke. Every deterministic policy
+runs at concurrency 1, so their observations never drifted; the agent is the
+only policy that raises it, and it ran at 24.
+
+**Two wrong turns worth recording.** I first blamed the concurrency refactor
+wholesale, then talked myself *out* of the issuer-health explanation on the
+grounds that health is non-null in only 62 of ~12,650 observations — too rare,
+I reasoned, to be the first miss. That reasoning was wrong: one differing
+observation diverges that case's decision, which diverges its history, and every
+later observation on that case differs too. 62 seeds of divergence cascade
+across a 500-case batch easily. The fix is to measure rather than to reason
+about it, which is what the table above finally did.
+
+**The fix.** Issuer health is now read for a whole wave up front, in the wave's
+own sorted order, before any decision in it runs. The observation is a function
+of the seed and the simulated clock alone, which is what it always claimed to be.
+
+**The test that should have caught this.** `tests/concurrency.test.ts` already
+asserted that concurrency 1 and 8 produce identical per-case results and
+identical metrics. It passed throughout — because *no policy reads issuer
+health*, so the drift never reached a metric. The property that mattered was one
+nobody was asserting: that the observation hashes themselves are stable.
+
+There is now a test for exactly that. It also had to be made bigger: at 50 cases
+issuer health is null everywhere, so the assertion was vacuous and passed with
+the bug reinstated. At 400 cases it fails without the fix and passes with it,
+which is the only version of that test worth having.
+
+The cost is that the fix changes observation hashes, so the 2,849 recorded v1
+decisions no longer match and have to be re-recorded once quota resets. The
+checkpoint README says so plainly rather than leaving a command in it that
+doesn't work.
+
+### C-021 — I nearly forged my own evidence
+**Severity: high, and it never shipped. Cost: 20 minutes.**
+
+While debugging C-020 I wrote a scratch script that ran the batch with a stub
+completer to count cache misses. `makeAgent` defaults its cache to the committed
+one at `.cache/llm`, and I did not override it. The stub's decisions were
+written there: 5,500 fabricated entries, in the file the README describes as
+real recorded model decisions, structurally indistinguishable from the genuine
+ones.
+
+I caught it only because an unrelated count came out wrong — the cache reported
+8,349 entries where it should have had 2,849. It was never committed, and
+`git checkout` restored it.
+
+This is the worst near-miss of the project so far. Every claim in the repo rests
+on the recorded decisions being real, and I had a workflow in which a debugging
+script could quietly overwrite them.
+
+Two guards now. `makeAgent` throws if a caller injects a completer without also
+injecting a cache — an injected completer means a test or a diagnostic, and
+neither may touch the committed cache. And a test asserts that every committed
+entry carries a non-zero token count, since a decision that cost nothing did not
+come from an API.
+
+The general lesson is the one that keeps recurring: the guardrail has to be
+structural. I *knew* not to point a stub at the real cache, and I did it anyway,
+because knowing is not a mechanism.

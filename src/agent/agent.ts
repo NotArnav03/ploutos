@@ -3,7 +3,7 @@ import type { Policy, PolicyDecision, PolicyInput } from '../domain/policy.js';
 import type { Channel, Language } from '../domain/schemas.js';
 import { addDays, addHours, type Timestamp } from '../domain/time.js';
 import { staticPolicy } from '../policy/static_policy.js';
-import { DecisionCache, cacheKey, type CacheEntry } from './cache.js';
+import { CACHE_DIR, DecisionCache, cacheKey, type CacheEntry } from './cache.js';
 import { PROMPT_VERSION, SYSTEM_PROMPT, renderCase } from './prompt.js';
 import { AgentOutputSchema, outputJsonSchema, type AgentOutput } from './schema.js';
 import { AGENT_MODEL, QuotaExhaustedError, geminiCompleter, type Completer } from './provider.js';
@@ -82,6 +82,23 @@ const CONSECUTIVE_FAILURE_LIMIT = 20;
  */
 export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats; flush(): void } {
   const model = opts.model ?? AGENT_MODEL;
+
+  // An injected completer means a test or a diagnostic, and neither may write
+  // to the committed cache.
+  //
+  // This is not hypothetical. A scratch script pointed a stub at the default
+  // cache and wrote 5,500 fabricated decisions into the file the README
+  // describes as real recorded model decisions - indistinguishable from the
+  // genuine ones by inspection, and caught only because an unrelated count came
+  // out wrong. It was never committed. Nothing structural had prevented it, so
+  // now something does.
+  if (opts.complete !== undefined && opts.cache === undefined) {
+    throw new Error(
+      'makeAgent: a custom completer must be given its own cache. Passing a stub ' +
+        'without one would write fabricated decisions into the committed cache at ' +
+        `${CACHE_DIR}.`,
+    );
+  }
   const cache = opts.cache ?? new DecisionCache();
   // Constructed lazily: building the client throws when no credentials are
   // present, and a cache-only replay needs no credentials at all.
