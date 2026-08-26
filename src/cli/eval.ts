@@ -5,10 +5,12 @@ import { verifyChain } from '../ledger/ledger.js';
 import { CostModel } from '../domain/costs.js';
 import { formatINR, paise, type Paise } from '../domain/money.js';
 import { BATCH_DIR, RESULTS_DIR } from '../domain/paths.js';
-import type { AnyPolicy } from '../domain/policy.js';
+import { OracleViolationError, type AnyPolicy } from '../domain/policy.js';
 import { RuleRegistry } from '../domain/rules.js';
 import { TaxonomyIndex } from '../domain/taxonomy.js';
 import { doNothing, naiveRetry } from '../policy/baselines.js';
+import { staticPolicy } from '../policy/static_policy.js';
+import { makeOracle } from '../world/oracle.js';
 import { runBatch, type RunResult } from '../eval/runner.js';
 import { computeMetrics, uplift, type Metrics } from '../metrics/compute.js';
 import type { LatentState } from '../world/latent.js';
@@ -17,6 +19,7 @@ import type { World, WorldCase } from '../world/types.js';
 const POLICIES: Record<string, AnyPolicy<LatentState>> = {
   'do-nothing': doNothing,
   'naive-retry': naiveRetry,
+  'static-policy': staticPolicy,
 };
 
 function loadWorld(name: string): World {
@@ -43,7 +46,7 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const batch = arg(argv, '--batch') ?? 'main';
   const seed = Number(arg(argv, '--seed') ?? 42);
-  const requested = (arg(argv, '--policy') ?? 'do-nothing,naive-retry').split(',');
+  const requested = (arg(argv, '--policy') ?? 'do-nothing,naive-retry,static-policy,oracle').split(',');
 
   const registry = new RuleRegistry();
   const taxonomy = new TaxonomyIndex();
@@ -65,7 +68,8 @@ async function main(): Promise<void> {
   const metrics: Metrics[] = [];
 
   for (const name of requested) {
-    const policy = POLICIES[name];
+    const policy =
+      name === 'oracle' ? makeOracle(world, seed, registry, staticPolicy) : POLICIES[name];
     if (!policy) {
       throw new Error(`unknown policy ${name}; have ${Object.keys(POLICIES).join(', ')}`);
     }
@@ -106,6 +110,28 @@ async function main(): Promise<void> {
     );
   }
 
+  // ---- the ceiling, and the invariant that guards it
+  //
+  // If any observation-only policy recovered more than the truth-aware oracle,
+  // the oracle's search was incomplete and the ceiling it reported is wrong.
+  // Every "percent of recoverable" figure downstream would then be an
+  // overstatement, so the correct response is to fail the run rather than to
+  // publish the higher number.
+  const oracleMetrics = metrics.find((m) => m.policy === 'oracle');
+  if (oracleMetrics) {
+    for (const m of metrics) {
+      if (m.policy === 'oracle') continue;
+      if (m.recovered_paise > oracleMetrics.recovered_paise) {
+        throw new OracleViolationError(m.policy, m.recovered_paise, oracleMetrics.recovered_paise);
+      }
+    }
+    for (const m of metrics) {
+      m.ceiling_paise = oracleMetrics.recovered_paise;
+      m.recovery_vs_ceiling =
+        oracleMetrics.recovered_paise === 0 ? null : m.recovered_paise / oracleMetrics.recovered_paise;
+    }
+  }
+
   writeFileSync(path.join(outDir, 'metrics.json'), JSON.stringify(metrics, null, 2) + '\n');
   for (const r of runs) {
     writeFileSync(
@@ -122,21 +148,31 @@ async function main(): Promise<void> {
   console.log(
     `structurally unrecoverable ${formatINR(hardValue)}  (${pct(hardValue / atRisk)})`,
   );
-  console.log(
-    `\n  NOTE: the recoverable ceiling requires the oracle policy, which lands on\n` +
-      `  day 4. Until then percentages are against FACE VALUE, which no policy can\n` +
-      `  reach, and are reported that way rather than dressed up as a ceiling.\n`,
-  );
+  if (!oracleMetrics) {
+    console.log(
+      `\n  NOTE: this run did not include the oracle, so there is no derived\n` +
+        `  ceiling. "of ceil" is blank and "of face" is measured against FACE\n` +
+        `  VALUE, which no policy can reach.\n`,
+    );
+  } else {
+    console.log(
+      `recoverable ceiling        ${formatINR(oracleMetrics.recovered_paise)}` +
+        `  (${pct(oracleMetrics.recovery_rate_vs_at_risk)} of face, derived by oracle search)\n`,
+    );
+  }
 
   const head = [
     'policy'.padEnd(14),
     'recovered'.padStart(15),
     'of face'.padStart(9),
+    'of ceil'.padStart(9),
     'net'.padStart(15),
     'cases'.padStart(7),
     'atts'.padStart(6),
     'msgs'.padStart(6),
     'notices'.padStart(7),
+    'refused'.padStart(7),
+    'esc'.padStart(5),
     'harm'.padStart(6),
   ].join(' ');
   console.log(head);
@@ -148,12 +184,15 @@ async function main(): Promise<void> {
         m.policy.padEnd(14),
         formatINR(m.recovered_paise).padStart(15),
         pct(m.recovery_rate_vs_at_risk).padStart(9),
+        pct(m.recovery_vs_ceiling).padStart(9),
         formatINR(paise(Math.max(0, m.net_recovered_paise))).padStart(15),
         `${m.recovered_count}`.padStart(7),
         `${m.attempts_total}`.padStart(6),
         `${m.contacts_total}`.padStart(6),
         `${m.notices_total}`.padStart(7),
-        (m.harm.clean ? 'clean' : `${m.harm.total_violations}`).padStart(6),
+        `${m.harm.gate_rejections}`.padStart(7),
+        `${m.escalated_count}`.padStart(5),
+        (m.harm.clean ? 'clean' : `${m.harm.harm_events}`).padStart(6),
       ].join(' '),
     );
   }
@@ -176,7 +215,7 @@ async function main(): Promise<void> {
   for (const m of metrics) {
     if (!m.harm.clean) {
       console.log(
-        `\n  !! ${m.policy} tripped ${m.harm.total_violations} violation(s), ` +
+        `\n  !! ${m.policy} tripped ${m.harm.harm_events} violation(s), ` +
           `including ${m.harm.double_charge_attempts} double charge(s).`,
       );
     }
