@@ -181,3 +181,146 @@ and `notices_total` (compliance). Fatigue and goodwill now count only the former
 Worth stating in the write-up because it is a genuine modelling judgement rather
 than a bug: a mandatory notice is not pressure, and a metric that treats it as
 pressure will reward non-compliance.
+
+---
+
+## 2026-08-26 · Day 4
+
+Day 4 built the gate out to all 28 rules, added the tuned `static-policy`
+ablation and the truth-aware `oracle`, and produced the first derived
+recoverable ceiling. Five of the six problems below were caught by
+instrumentation that had been built for a different reason — which is now a
+pattern rather than a coincidence.
+
+### C-009 — 73 of 1,000 audit records failed their own hash check
+**Severity: high. Cost: ~50 minutes.**
+
+The first real run of the chain-verification guard refused to report metrics:
+73 events rehashed to something other than their stored hash. A tampered or
+broken audit trail is worse than no audit trail, because it still looks
+credible, so the run correctly aborted.
+
+It was not tampering. Exclusions built on the stop path were constructed as
+`{action_type, rule_id, channel, detail}` while `block()` built them as
+`{action_type, rule_id, detail, channel}`. Zod rebuilds objects in
+schema-declaration order when it parses, `JSON.stringify` is key-order
+sensitive, and so an event hashed before the round-trip disagreed with the same
+event hashed after it.
+
+Fixed with `src/domain/canonical.ts` — a canonical JSON serialiser that sorts
+keys and drops `undefined` — now shared by `hashEvent` and `observationHash`.
+The lesson worth keeping: any hash over a structure that crosses a
+serialisation boundary needs a canonical form, and the bug is invisible until
+something actually verifies.
+
+### C-010 — The ladder made it impossible to give up
+**Severity: high. Cost: ~20 minutes.**
+
+1,680 of 13,018 decisions were being rejected by the gate, all of them the same
+shape: `stop_terminal` refused by `LADDER_MONOTONIC` because closing a case
+reads as a jump from rung 0 to rung 7. Policies were literally unable to stop,
+and the oracle burned its step budget waiting for permission to give up.
+
+De-escalation is never an escalation. `stop_terminal` and `handoff_human` are
+now exempt from the ladder check. Worth noting that the rule was correct in
+spirit and wrong in scope — it is the kind of bug that only appears once
+something actually tries to obey the rule.
+
+### C-011 — Refused choices were being counted as harm
+**Severity: medium. Cost: ~15 minutes.**
+
+The metric lumped gate rejections in with harm events, so a policy proposing an
+action the gate then refused scored as if it had breached a rule. That is
+backwards: a refusal is the gate *working*. Harm is a breach that reached the
+world.
+
+Split into `gate_rejections` (a quality signal about the policy) and
+`harm_events` (any nonzero value invalidates the run). Only the latter feeds
+`harm.clean`.
+
+### C-012 — The oracle was beaten by a heuristic, three times
+**Severity: high. Cost: ~2 hours.**
+
+The `OracleViolationError` invariant — fail any run where an observation-only
+policy recovers more than the truth-aware oracle — fired three separate times,
+each a different incompleteness in the search:
+
+1. `static-policy` recovered ₹5,96,936 against a ceiling of ₹5,95,795. The
+   invariant had been designed but not yet wired into the CLI, so the first fix
+   was to actually enforce it. The cause: `notify_soft` mutates latent state
+   when a payer tops up, so an intervention *creates* recoverability that a
+   fixed-world probe cannot see.
+2. After adding intervention probing the ceiling fell to ₹5,70,702, because the
+   delivery probe indexed the RNG stream by non-compliance contacts while the
+   runner indexes it by total contacts. The probe and the world disagreed on
+   any case that had been served a notice.
+3. After fixing that and probing across the remaining attempt-seq budget, the
+   ceiling was ₹5,76,238 and still lost.
+
+The resolution is a design decision rather than a patch: the oracle now takes a
+fallback policy and defers to it whenever the exact search has nothing to
+offer, so the ceiling is `max(exact search, tuned rules)` per decision. It
+remains a lower bound on the true optimum, which is the safe direction for a
+denominator — it can only make our own policies look worse.
+
+### C-013 — A twelve-hour retry step stranded cases at an hour they could never act
+**Severity: high. Cost: ~1.5 hours. Found by a test, not by a run.**
+
+The new oracle tests asserted the ceiling invariant on a second failure mix,
+and it failed immediately: on `mix_c`, `static-policy` recovered ₹1,56,451
+against a ceiling of ₹1,32,850. The default mix had passed, so this would have
+surfaced on day 8's sensitivity sweep instead, with a week's results built on
+top of it.
+
+The audit trail showed the oracle waiting nineteen simulated days on a case it
+had already solved, alternating between exactly two timestamps: 07:30 and 19:30
+IST. Both are outside the 09:00–19:00 contact window. No channel was ever
+permitted, so the required pre-debit notice could never be served, so the debit
+was never unblocked, and the invoice aged out while the policy knew precisely
+which presentment would have settled it.
+
+Two independent causes:
+
+- The oracle returned `wait until <now>` when it knew the winning time was now
+  but the gate would not let it act — a decision that cannot advance anything.
+- The runner's stall guard then advanced the clock by a flat 12 hours. Twelve
+  divides twenty-four, so the case revisited the same two wall-clock times for
+  the rest of its life. A time-of-day rule it failed at those two times, it
+  failed forever.
+
+Fixed at the source rather than in the guard: the gate now reports
+`contact_window_opens_at`, so any policy blocked only by the clock can wait for
+the clock instead of guessing an offset — including the LLM agent on day 6,
+which gets it for free in the permitted set. The oracle no longer emits a wait
+that cannot advance. The stall guard's step is now seven hours, coprime with
+twenty-four, so a stalled case walks the whole clock instead of resonating with
+it; and stalls are counted into `stalled_steps` rather than absorbed silently,
+because a stranded case is exactly the kind of failure that hides.
+
+Stalls across all four policies are now zero, which is the real confirmation:
+the guard is defensive, not load-bearing.
+
+The corrected ceiling is ₹9,13,994 rather than ₹8,27,081 — 10.5% higher. Every
+"percent of recoverable" figure had been measured against an understated
+denominator, which flattered every policy in the table.
+
+### C-014 — I broke a deliberate wait while fixing the stall
+**Severity: medium. Cost: ~30 minutes. Self-inflicted, caught by re-measuring.**
+
+The first version of the C-013 fix let `static-policy` pull *any* wait forward
+to the moment contact hours reopened. Its recovery promptly dropped from
+₹5,96,937 to ₹5,18,836 and I nearly attributed that to a re-tune that had
+happened in the same edit.
+
+Decomposing the two changes showed the re-tune was worth 0.07% either way — the
+regression was entirely mine. A wait aimed at the payer's next salary credit is
+a *plan*; pulling it forward to 9am tomorrow just burns a presentment into an
+account that is still empty. The window-wait now applies only when the target
+has already passed, i.e. when the wait is a stall rather than a plan.
+
+Two things worth keeping from this. First: when two changes land together and
+the number moves, decompose before explaining — the obvious culprit was the
+wrong one. Second: the grid search accepted a parameter change worth 0.04% on
+three training seeds, which is well inside run-to-run variation. Held-out seeds
+split 4–1 in its favour, so it stands, but a search that accepts differences
+that small is fitting noise and needs an acceptance margin before day 8.

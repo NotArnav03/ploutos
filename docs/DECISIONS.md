@@ -136,3 +136,52 @@ Currently unverified and needing a primary source before day 9:
 `PREDEBIT_NOTICE` (24h), `AFA_THRESHOLD` (₹15,000), `CONTACT_HOURS` (09:00–19:00),
 `DND_SUPPRESSION` (channel scope). The remainder are merchant-policy parameters
 that are ours to choose and are labelled as such.
+
+### D-011 — The ceiling is the oracle's result, and the oracle may consult a heuristic
+**2026-08-26**
+
+The recoverable ceiling is derived by searching the same simulator every other
+policy runs against, never asserted by the generator. The search is exact where
+it can be — presentment randomness is addressed by `(seed, case_id, purpose,
+attempt_seq)` rather than drawn from a running stream, so probing a candidate
+time returns the true outcome rather than a sample from a similar distribution.
+
+Where the exact search comes up empty, the oracle defers to `static-policy`
+rather than giving up. The ceiling is therefore `max(exact search, tuned rules)`
+per decision. This is not elegant, and it is deliberate: a one-decision-deep
+search cannot see that a nudge which fails today may be followed by one that
+lands next week, and it twice produced a "ceiling" that a plain heuristic beat.
+
+The resulting number is a **lower bound on the true optimum**, and it is
+reported as such. That is the safe direction for a denominator — it can only
+make our own policies look worse — and `OracleViolationError` fails any run in
+which an observation-only policy beats it, so the bound cannot quietly rot.
+
+### D-012 — The gate publishes when it will next allow a contact
+**2026-08-26**
+
+`computePermitted` returns `contact_window_opens_at` alongside the permitted
+set. The gate already knows when contact hours reopen; without publishing it,
+every policy has to guess an offset, and a guess that divides 24 hours strands
+the case at an hour it is never permitted to act (see C-013).
+
+This matters most for day 6: the LLM chooses from the permitted set, and "you
+may not contact anyone right now, but you may at 09:00" is information it needs
+in order to choose `wait` sensibly. Encoding it in the gate keeps that reasoning
+deterministic and out of the prompt.
+
+### D-013 — Escalated cases count as unrecovered
+**2026-08-26**
+
+A case handed to a human is money this system did not collect, so it scores as
+unrecovered. A real merchant's team would recover some fraction of it; we have
+no basis for that fraction and will not invent one.
+
+The consequence is visible and should be stated plainly rather than hidden: the
+parameter search drove `handoff_min_value_paise` above every invoice in the
+batch — "never hand off" — because under this accounting a handoff is pure cost.
+We keep the tuned value rather than hobbling the baseline for realism, since a
+baseline weakened on purpose is precisely the strawman the ablation exists to
+avoid. Every number in this project therefore measures **automated recovery
+only**, and escalations are reported in their own column so the trade stays in
+view.

@@ -50,9 +50,9 @@ which that happens is a reported number, not a hidden one.
 | Day | Deliverable | State |
 |-----|-------------|-------|
 | 1 | Domain schemas, failure taxonomy, rules registry, boundary test | ✅ |
-| 2 | Generator, latent state, simulator, frozen world model | — |
-| 3 | `do-nothing` + `naive-retry` baselines, metric harness | — |
-| 4 | Policy engine, `static-policy` + `oracle` baselines | — |
+| 2 | Generator, latent state, simulator, frozen world model | ✅ |
+| 3 | `do-nothing` + `naive-retry` baselines, metric harness | ✅ |
+| 4 | Policy engine, `static-policy` + `oracle` baselines | ✅ |
 | 5 | Hash-chained audit ledger, `npm run replay` | — |
 | 6 | LLM decision service | — |
 | 7 | Tuning, promise-to-pay, message copy | — |
