@@ -372,3 +372,71 @@ exactly while the files differ. The claim is now stated that way. It is a small
 thing, but "byte-identical" is the kind of overclaim a payments engineer would
 test in thirty seconds, and finding it false would cast doubt on every other
 claim in the repo.
+
+### C-017 — I built a signal that could not fire, and only found out by measuring it
+**Severity: medium. Cost: ~1 hour. Found by rendering a prompt and reading it.**
+
+Day 6 wires the agent up, and the first thing I did before spending money on
+the API was print a real prompt and read it as if I were the model. Three
+things were wrong with one line of it, in ascending order of seriousness.
+
+The line was `ISSUER  ISSUER_07 · observed health: ${obs.issuer_health}`.
+
+First, `issuer_health` is an object, not a number, so on every issuer the
+tracker actually had data for, the model was being handed the string
+`[object Object]`. It happened to render `null` in the case I looked at, which
+is why the bug had survived: the failing branch was the one I never saw.
+
+Second, that `null` was itself misleading. Null means "too little traffic
+through this issuer to say anything", and printing the literal word `null`
+invites a reader — human or model — to treat absence of evidence as evidence.
+
+Third, and the one that mattered: once I fixed the rendering and went looking
+for a case that exercised the non-null branch, I could not find one that said
+anything. So I measured it properly, across every committed batch:
+
+| batch | prompts rendered | with issuer data | degraded | failure_rate values seen |
+|---|---|---|---|---|
+| main | 12,652 | 62 | 0 | 100% |
+| main_mix_b | 13,612 | 255 | 0 | 100% |
+| main_mix_c | 10,156 | 50 | 0 | 100% |
+| stress | 51,797 | 5,747 | 0 | 100% |
+
+Every reported failure rate, across 88,217 rendered prompts, was exactly 100%.
+
+The reason is structural and, in hindsight, obvious. `IssuerHealthTracker`
+compared an issuer's failure rate in the last six hours against its own rate
+over the trailing fortnight. But the only presentments it can ever see are the
+ones in a **recovery queue**, and a recovery queue is made of failures by
+definition. The baseline sat at 100% for every issuer, no issuer could exceed
+it, and `degraded` was a flag with no reachable true branch.
+
+I changed the baseline to the *other* issuers in the same window, which is both
+correct and the comparison a merchant actually makes: "everything is failing"
+is a queue, "ISSUER_04 is failing while the other nine are not" is a bank
+having a bad afternoon. That fix is right, and it still does not fire — because
+in this world every issuer in the queue is at 100% simultaneously.
+
+There were three ways out and only one honest one.
+
+I could have fed the world successful presentments so a real baseline existed.
+That means editing the world model on day 6 to make an agent input look better,
+which is precisely the move the frozen-world hash test exists to prevent, and I
+am not going to defeat my own guardrail the first time it costs me something.
+
+I could have left the line in. A prompt that says "100% of 9 attempts failed"
+on 62 of 12,652 cases, when that number is an artifact of how the queue was
+seeded, is a constant dressed up as a signal — worse input than no input, and
+an overclaim if the README ever said "issuer degradation detection".
+
+What I did instead: the tracker keeps the corrected peer baseline, the prompt
+renders the health clause **only when it discriminates** (when the issuer
+differs from its peers by 10 points or is outright degraded), and today that
+means the model sees an issuer id and nothing else. Two tests pin both halves —
+one proves degradation fires on a stream that contains it, one proves it stays
+false on an all-failure stream and says why.
+
+The general lesson is the one this project keeps re-learning: an instrument is
+not working because it compiles and its tests pass. It is working when you have
+looked at what it actually emitted on real data. I have now been saved four
+separate times by printing something and reading it.

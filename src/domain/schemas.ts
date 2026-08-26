@@ -25,7 +25,8 @@ export type { Timestamp } from './time.js';
 export const RailSchema = z.enum(['upi_autopay', 'enach', 'card_on_file']);
 export type Rail = z.infer<typeof RailSchema>;
 
-export const ChannelSchema = z.enum(['sms', 'email', 'whatsapp', 'inapp']);
+export const CHANNELS = ['sms', 'email', 'whatsapp', 'inapp'] as const;
+export const ChannelSchema = z.enum(CHANNELS);
 export type Channel = z.infer<typeof ChannelSchema>;
 
 export const FailureClassSchema = z.enum(['soft', 'soft_action', 'soft_compliance', 'hard']);
@@ -46,7 +47,8 @@ export type Remedy = z.infer<typeof RemedySchema>;
 export const SegmentSchema = z.enum(['b2c', 'smb']);
 export type Segment = z.infer<typeof SegmentSchema>;
 
-export const LanguageSchema = z.enum(['en', 'hinglish', 'hi']);
+export const LANGUAGES = ['en', 'hinglish', 'hi'] as const;
+export const LanguageSchema = z.enum(LANGUAGES);
 export type Language = z.infer<typeof LanguageSchema>;
 
 // ----------------------------------------------------------------- customer
@@ -229,7 +231,12 @@ export const IssuerHealthSchema = z.object({
   attempts: z.number().int().nonnegative(),
   failures: z.number().int().nonnegative(),
   failure_rate: z.number().min(0).max(1),
-  /** Failure rate over the trailing baseline, for degradation detection. */
+  /**
+   * What the OTHER issuers are doing in the same window. The comparison that
+   * matters is not this issuer against its own past - a recovery queue is all
+   * failures, so that baseline is always ~100% - but this issuer against its
+   * peers right now.
+   */
   baseline_failure_rate: z.number().min(0).max(1),
   degraded: z.boolean(),
 });

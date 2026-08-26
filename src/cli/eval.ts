@@ -10,6 +10,7 @@ import { TaxonomyIndex } from '../domain/taxonomy.js';
 import { doNothing, naiveRetry } from '../policy/baselines.js';
 import { staticPolicy } from '../policy/static_policy.js';
 import { makeOracle } from '../world/oracle.js';
+import { makeAgent } from '../agent/agent.js';
 import { runBatch, type RunResult } from '../eval/runner.js';
 import { computeMetrics, uplift, type Metrics } from '../metrics/compute.js';
 import type { LatentState } from '../world/latent.js';
@@ -45,7 +46,7 @@ async function main(): Promise<void> {
   const argv = process.argv.slice(2);
   const batch = arg(argv, '--batch') ?? 'main';
   const seed = Number(arg(argv, '--seed') ?? 42);
-  const requested = (arg(argv, '--policy') ?? 'do-nothing,naive-retry,static-policy,oracle').split(',');
+  const requested = (arg(argv, '--policy') ?? 'do-nothing,naive-retry,static-policy,agent,oracle').split(',');
 
   const registry = new RuleRegistry();
   const taxonomy = new TaxonomyIndex();
@@ -66,11 +67,21 @@ async function main(): Promise<void> {
   const runs: RunResult[] = [];
   const metrics: Metrics[] = [];
 
+  const noCache = argv.includes('--no-cache');
+  let agent: ReturnType<typeof makeAgent> | null = null;
+
   for (const name of requested) {
+    if (name === 'agent') agent ??= makeAgent({ noCache });
     const policy =
-      name === 'oracle' ? makeOracle(world, seed, registry, staticPolicy) : POLICIES[name];
+      name === 'oracle'
+        ? makeOracle(world, seed, registry, staticPolicy)
+        : name === 'agent'
+          ? agent
+          : POLICIES[name];
     if (!policy) {
-      throw new Error(`unknown policy ${name}; have ${Object.keys(POLICIES).join(', ')}`);
+      throw new Error(
+        `unknown policy ${name}; have ${Object.keys(POLICIES).join(', ')}, agent, oracle`,
+      );
     }
     // Each policy runs against a FRESH copy of the world. Latent state mutates
     // when a payer engages, so sharing it between policies would let one
@@ -103,6 +114,22 @@ async function main(): Promise<void> {
       `  ran ${name.padEnd(14)} ${result.wall_ms.toString().padStart(6)}ms  ` +
         `${result.ledger_events} ledger events\n`,
     );
+
+    if (name === 'agent' && agent) {
+      // Written to disk as soon as the run finishes, so a crash later in the
+      // batch does not throw away decisions that were already paid for.
+      agent.flush();
+      const s = agent.stats;
+      process.stdout.write(
+        `    ${s.cache_hits} cached, ${s.calls} live call(s), ` +
+          `${s.api_errors} error(s), ${s.tokens_in}/${s.tokens_out} tokens in/out\n`,
+      );
+      if (s.api_errors > 0) {
+        process.stdout.write(
+          `    !! ${s.api_errors} decision(s) fell back to static-policy; this run is NOT a clean agent result\n`,
+        );
+      }
+    }
   }
 
   // ---- the ceiling, and the invariant that guards it

@@ -218,3 +218,29 @@ exactly, while the files differ byte for byte. That is the honest arrangement:
 chain attests to. Hashing it would make the trail unreproducible for a reason
 that has nothing to do with integrity, and the README says so rather than
 claiming byte-identical reruns.
+
+### D-016 — Issuer health is computed against peers, and shown only when it discriminates
+**2026-08-26**
+
+`IssuerHealthTracker` originally compared an issuer's recent failure rate to its
+own trailing rate. That cannot work on a recovery queue, which is 100% failures
+for every issuer by construction, so `degraded` had no reachable true branch —
+measured at zero across 88,217 rendered prompts on four batches (C-017).
+
+The baseline is now the other issuers in the same window. That is the correct
+comparison and the one a merchant makes, and it is still computed entirely from
+the merchant's own decline stream, so it stays observable and never touches
+latent state.
+
+The prompt renders the health clause only when the issuer differs from its
+peers by ten points or more, or is outright degraded. In the committed batches
+that is never, and the model correctly sees an issuer id with no health claim
+attached. The alternative — printing a value that is always 100% — would be
+feeding the model a constant and calling it a signal.
+
+The obvious "fix" of adding successful presentments to the world so a baseline
+exists was rejected. Editing the frozen world model to make an agent input look
+better is exactly what the golden-hash test exists to prevent, and the first
+time that guardrail costs something is the worst possible time to route around
+it. If the world ever grows a full presentment stream, it will be for a reason
+that is not "the agent's inputs looked thin".

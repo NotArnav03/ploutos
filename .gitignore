@@ -10,6 +10,10 @@ node_modules/
 data/batches/stress.*
 
 # Ad-hoc run directories. Checkpoint and submission runs are committed explicitly
-# with `git add -f` (metrics and per-case results only; the audit ledgers are
-# tens of megabytes per run and regenerate byte-identically from the seed).
+# with `git add -f`, including their gzipped audit ledgers. A re-run at the same
+# seed reproduces every hash and every number; the files themselves differ,
+# because each record carries the wall clock at which it was written.
 results/*/
+
+# Local prompt/preview scratch. Never part of a result.
+scratch/
