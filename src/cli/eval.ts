@@ -1,6 +1,6 @@
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { loadEnv } from '../domain/env.js';
+import { describeEnv, loadEnv } from '../domain/env.js';
 import { readLedgerFile, verifyChain } from '../ledger/ledger.js';
 import { CostModel } from '../domain/costs.js';
 import { formatINR, paise, type Paise } from '../domain/money.js';
@@ -67,6 +67,12 @@ async function main(): Promise<void> {
     world.cases.map((c) => [c.case_id, c.customer.ltv_paise]),
   );
 
+  // Shell precedence silently ignores a key just written into .env, which
+  // cost an afternoon of paid runs against a credential believed to be idle.
+  // A rule that quietly picks one of two keys has to say which one it picked.
+  if (requested.includes('agent')) {
+    console.log(`\ncredential: ${describeEnv('GEMINI_API_KEY')}`);
+  }
   console.log(`\nbatch ${batch} · ${world.cases.length} cases · mix ${world.meta.mix} · seed ${seed}`);
   console.log(`run ${runId}\n`);
 

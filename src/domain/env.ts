@@ -24,6 +24,27 @@ let loaded = false;
  * Not called from library code or tests - only from the CLIs, so that a test
  * run never depends on what happens to be in a developer's `.env`.
  */
+/** Where a variable's value came from, for reporting. */
+export type EnvSource = 'shell' | '.env' | 'unset';
+
+const sources = new Map<string, EnvSource>();
+
+/**
+ * Which source supplied a variable, and a masked form of its value.
+ *
+ * Shell precedence is the right default, but it silently ignores a key someone
+ * has just written into `.env` - which happened here, for a whole afternoon of
+ * paid runs against a key the operator believed was not in use. A rule that
+ * quietly picks one of two credentials has to say which one it picked.
+ */
+export function describeEnv(key: string): string {
+  const value = process.env[key];
+  if (value === undefined || value.length === 0) return `${key} is not set`;
+  const masked =
+    value.length <= 10 ? '***' : `${value.slice(0, 4)}...${value.slice(-3)}`;
+  return `${key} ${masked} (${sources.get(key) ?? 'shell'})`;
+}
+
 export function loadEnv(file: string = ENV_PATH): void {
   // The once-only guard is about not re-reading the default file on every CLI
   // entry point. An explicit path is a caller asking for this file now, which
@@ -40,7 +61,10 @@ export function loadEnv(file: string = ENV_PATH): void {
     const eq = line.indexOf('=');
     if (eq <= 0) continue;
     const key = line.slice(0, eq).trim();
-    if (process.env[key] !== undefined) continue;
+    if (process.env[key] !== undefined) {
+      sources.set(key, 'shell');
+      continue;
+    }
     let value = line.slice(eq + 1).trim();
     if (
       value.length >= 2 &&
@@ -49,6 +73,9 @@ export function loadEnv(file: string = ENV_PATH): void {
     ) {
       value = value.slice(1, -1);
     }
-    if (value.length > 0) process.env[key] = value;
+    if (value.length > 0) {
+      process.env[key] = value;
+      sources.set(key, '.env');
+    }
   }
 }
