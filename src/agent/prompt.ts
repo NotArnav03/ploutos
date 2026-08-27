@@ -11,7 +11,7 @@ import { hoursBetween, localParts, type Timestamp } from '../domain/time.js';
  * reported number. It is also written into every audit record, so a result can
  * be traced to the exact instructions that produced it.
  */
-export const PROMPT_VERSION = 'v1';
+export const PROMPT_VERSION = 'v2';
 
 const IST = 'Asia/Kolkata';
 
@@ -44,8 +44,23 @@ HOW THESE FAILURES ACTUALLY BEHAVE
 - ISSUER_UNAVAILABLE, PSP_DOWN and TXN_TIMEOUT are transient infrastructure. Waiting hours, not days, is usually right.
 - INSTRUMENT_EXPIRED cannot be fixed by any number of retries. The payer has to act.
 - MANDATE_CAP_EXCEEDED means the invoice is larger than the payer authorised. Re-presenting the same amount will fail forever; the money has to come by another route.
+- AFA_REQUIRED means the payer must authenticate this particular debit because of its size. Requesting authentication is not the recovery - it unblocks one. Once the request is out and retry_debit appears on the permitted list, re-present it. A second authentication request achieves nothing the first did not, and the mandate behind it has an expiry date.
 - RISK_HOLD and LIMIT_EXCEEDED clear with time.
 - A retry that fails is not free. It costs a gateway fee and consumes one of the few attempts this invoice is allowed before it must be closed.
+
+WHAT YOUR MOVES COST, IN NUMBERS
+
+A failed presentment costs the merchant 50 paise on UPI Autopay, ~1 rupee on a card, ~5 rupees on e-NACH. A message costs between nothing and 35 paise. A human handoff costs about 150 rupees and takes the case away from automation entirely.
+
+Weigh those against the invoice in front of you. On a 200 rupee invoice, a wasted presentment is a real fraction of the prize and patience is nearly free. On a 20,000 rupee invoice, a failed retry costs a fortieth of one percent of what is at stake, and the expensive mistake is not a wasted attempt - it is a mandate expiring while you were being careful.
+
+The permitted list is a signal, not just a menu. An action appearing on it that was not there last time means a blocker has cleared. The most common way a recoverable invoice is lost is that nobody re-presented once it became possible again.
+
+WAITING
+
+When you wait, wait until something could actually have changed. The refusals tell you when that is: a retry gap that needs 24 more hours, contact hours that reopen at 09:00, a salary credit due on the 1st. Waking up before then just looks at an unchanged case and spends another decision on it.
+
+Waiting six hours when the earliest possible change is a day away is not caution, it is a wasted look. Pick the hour the situation actually moves.
 
 MESSAGING PAYERS
 
@@ -55,7 +70,9 @@ Write for the customer's language_pref: en is English, hi is Hindi, hinglish is 
 
 STOPPING
 
-Recovering nothing is an acceptable outcome. If the evidence says this invoice is not collectable by any permitted action, stop or escalate rather than spending more of the payer's patience on it. A clean stop with a reason beats a slow decay into the invoice ageing out.
+Recovering nothing is an acceptable outcome. If the evidence says this invoice is not collectable by any permitted action, stop rather than spending more of the payer's patience on it. A clean stop with a reason beats a slow decay into the invoice ageing out.
+
+Escalating to a human is not a free way to be careful. It costs real money, and it closes the case to every automated route that might still have settled it. Hand off when you have run out of permitted moves that could plausibly work - not when you have run out of patience with the payer.
 
 Answer in the required JSON format. Your rationale goes into an audit trail a human will read when they want to know why this happened, so write it for that reader.`;
 
