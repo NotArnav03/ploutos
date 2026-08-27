@@ -4,10 +4,12 @@
 
 Built for the Razorpay AI Buildathon 2026, Track 03 — AI Revenue Recovery.
 
-> 🚧 **Day 1 of 10.** This README is a stub. No results are claimed yet, because
-> no evaluation has been run yet. Every number that eventually appears here will
-> come from a committed run under `results/`, reproducible with a single command.
-> Until then this file describes intent, not achievement.
+```bash
+npm install && npm run eval
+```
+
+Two seconds, no API key, no network. It reproduces every number below from
+committed decisions.
 
 ---
 
@@ -40,52 +42,184 @@ The design commitment that shapes everything else:
 
 The model never moves money, never determines eligibility, never evaluates a
 compliance rule, never decides when to stop, and never computes a metric. It
-diagnoses, it chooses among already-permitted options, it writes the customer
-copy and the handoff summary. An LLM choice outside the permitted set is
-rejected and recorded as a violation rather than executed — and the rate at
-which that happens is a reported number, not a hidden one.
+diagnoses, it chooses among already-permitted options, it picks a channel, a
+wait duration and a language, and it writes the rationale a human will read in
+the audit trail.
 
-## Status
+---
 
-| Day | Deliverable | State |
-|-----|-------------|-------|
-| 1 | Domain schemas, failure taxonomy, rules registry, boundary test | ✅ |
-| 2 | Generator, latent state, simulator, frozen world model | ✅ |
-| 3 | `do-nothing` + `naive-retry` baselines, metric harness | ✅ |
-| 4 | Policy engine, `static-policy` + `oracle` baselines | ✅ |
-| 5 | Hash-chained audit ledger, `npm run replay` | ✅ |
-| 6 | LLM decision service | — |
-| 7 | Tuning, promise-to-pay, message copy | — |
-| 8 | Adversarial cases, harm metrics, sensitivity analysis | — |
-| 9 | Razorpay test-mode adapter, compliance verification, diagram | — |
-| 10 | Final run, results, video | — |
+## Results
 
-Full plan in [`docs/PLAN.md`](docs/PLAN.md). Decisions in
-[`docs/DECISIONS.md`](docs/DECISIONS.md). Things that broke, in
-[`docs/CHALLENGES.md`](docs/CHALLENGES.md).
+500 failed invoices, `mix_a`, seed 42. Value at risk **₹17,07,092.23**, of which
+**₹2,68,856.39 (15.7%)** is structurally unrecoverable by the taxonomy's own
+classes. Prompt v1 on `gemini-3.7-flash`.
+
+| policy | recovered | of face | of ceiling | net | cases | atts | msgs | notices | refused | esc | harm |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| do-nothing | ₹0.00 | 0.0% | 0.0% | ₹0.00 | 0 | 500 | 0 | 0 | 0 | 0 | clean |
+| naive-retry | ₹1,13,336.00 | 6.6% | 12.4% | ₹1,12,430.44 | 114 | 1264 | 0 | 268 | 0 | 0 | clean |
+| **static-policy** | **₹5,96,091.90** | 34.9% | **65.2%** | ₹5,88,407.77 | 185 | 1215 | 436 | 268 | 0 | 28 | clean |
+| **agent** | **₹5,85,644.72** | 34.3% | **64.1%** | ₹5,69,527.56 | 204 | 1081 | 732 | 285 | **0** | 99 | clean |
+| oracle *(ceiling)* | ₹9,13,994.17 | 53.5% | 100.0% | ₹9,05,407.69 | 273 | 994 | 411 | 235 | 0 | 28 | clean |
+
+### The honest reading
+
+**The agent does not beat the hand-tuned rules engine. It ties with it.**
+
+Both policies ran the identical 500 cases, so the comparison is paired:
+
+```
+gross -₹10,447.18   95% CI -₹1,87,631.35 .. +₹1,69,982.79
+net   -₹18,880.21   95% CI -₹1,96,765.26 .. +₹1,60,724.57
+the agent came out behind in 54.7% of resamples
+```
+
+54.7% is a coin flip. Only 89 of 500 cases reached different outcomes, and those
+differences sit in a few dozen high-value invoices, so **this batch cannot
+resolve a two-percent difference in recovered value** — in either direction.
+`npm run eval` prints that warning itself rather than leaving it to the reader.
+
+What the run *does* establish, over 12,738 recorded model decisions:
+
+- **Zero gate rejections.** The model never once chose an action the policy
+  engine had not permitted. Not because it was well-behaved — because the
+  response schema is rebuilt per call to enumerate only the permitted actions,
+  so a forbidden one is undecodable rather than discouraged.
+- **Zero harm events.** No double charge, no contact outside permitted hours, no
+  message to a DND or revoked-mandate payer, across every policy.
+- **A ceiling that was derived, not asserted.** ₹9,13,994.17 comes from an
+  oracle that searches ground truth for what was actually achievable. If any
+  observation-only policy ever beats it, the run **fails** rather than
+  publishing the higher number.
+
+## What the model choice and the prompt are each worth
+
+Prompt and model were both varied on the same 500 cases. Both effects are large:
+
+| | `gemini-3.7-flash` | `gemini-3.1-flash-lite` |
+|---|---|---|
+| **prompt v1** | **₹5,85,645 · 64.1%** | ₹3,98,306 · 43.6% |
+| **prompt v2** | *not measured* | ₹5,43,880 · 59.5% |
+
+- **Model**, prompt held fixed: **+47%** for the larger model.
+- **Prompt**, model held fixed: **+37%** for v2.
+
+Prompt v2 closes the specific defects diagnosed in `docs/CHALLENGES.md` C-018 —
+presentments on authentication-blocked cases go from 2 to 14 (the baseline
+manages 15), and escalations to a human fall from 99 to 13 (the baseline: 28).
+
+The top-right cell is empty for an honest reason: **the API budget ran out**
+2,300 decisions into roughly 3,100. It is the configuration both effects predict
+should be best, and it was never measured. `docs/EXPERIMENTS.md` has the full
+grid, the behavioural counters, and the variant that made things worse.
+
+---
+
+## Architecture
+
+```
+world (ground truth)  ──►  observation  ──►  gate  ──►  policy  ──►  runner  ──►  ledger
+   src/world/**            src/adapter/    src/policy/   ▲          src/eval/    src/ledger/
+   NEVER imported                                        │
+   by policy code                              LLM chooses here only,
+                                               from the permitted set
+```
+
+Five things carry the weight:
+
+**1. The latent/observable split is enforced by the build.** `src/world/**` holds
+ground truth. `src/agent/**`, `src/policy/**` and `src/domain/**` may never
+import it, and a test fails the build if they do. The agent cannot cheat because
+it cannot reach the answer.
+
+**2. Rules are enforced structurally, never prompted.** A test asserts that
+`CONTACT_HOURS`, `DND`, `PREDEBIT_NOTICE` and `AFA_THRESHOLD` never appear in
+the system prompt. The gate removes illegal actions before the model sees a
+menu. "The LLM cannot authorise a refund" is a property of the request schema
+and of the action union — there is no refund action to construct.
+
+**3. Every refusal names the rule that caused it.** The trail records not just
+what happened but what was forbidden and why, which is what makes it an
+explanation rather than a log.
+
+**4. The audit trail is hash-chained per case, and verified before any metric is
+reported.** A tampered or truncated trail is worse than none, because it still
+looks credible, so `npm run eval` refuses to print numbers derived from one.
+
+**5. Decisions are committed, so the results replay.** 12,738 recorded model
+decisions live in `.cache/llm/`, keyed on prompt version, model, observation
+hash and the permitted set — so an answer chosen from one menu is never replayed
+against a different one.
+
+---
+
+## Reproducing the numbers
+
+```bash
+npm run eval                        # the table above, ~2s, no API key
+npm test                            # 153 tests
+```
+
+Every figure comes from `results/checkpoint-main-s42-agent-v1/`, committed in
+full — metrics, per-case outcomes, and the complete hash-chained audit trail for
+all five policies, nothing sampled.
+
+To check the trail rather than take it on trust:
+
+```bash
+# re-derive every hash and every link in all five chains
+npm run replay -- --run results/checkpoint-main-s42-agent-v1 --verify
+
+# read one case's decisions as a timeline
+npm run replay -- --run results/checkpoint-main-s42-agent-v1 --case CASE-00005
+```
+
+The second prints, for every step: what the gate permitted, **which rule refused
+each thing it did not**, what the policy chose and the reason it gave, and what
+the world did in response. `CASE-00005` is the ₹19,369 invoice discussed in
+C-018, where the gate offered a presentment five times and the agent waited
+through all of them until the mandate expired.
+
+Other configurations, all replaying from cache with no key:
+
+```bash
+npm run eval -- --batch main --prompt v2 --model gemini-3.1-flash-lite
+npm run behaviour -- --runs results/grid/v1-flash-lite,results/grid/v2-flash-lite
+```
+
+---
 
 ## Honesty notes
 
-These are stated up front rather than in a footnote, because they change how
-every number here should be read.
+- **Every number here comes from a committed run.** Nothing is estimated,
+  projected or rounded up from a smaller sample.
+- **The world is synthetic.** Failure-code distributions are an assumption, not
+  a measurement, which is why the headline is run under three different mixes
+  rather than one. `config/failure_mix.yaml` argues each.
+- **Compliance parameters carry a `verification` status.** Four are marked
+  `unverified`, meaning the number is ours and not sourced from a primary
+  document. The phrases "RBI compliant" and "NPCI compliant" appear nowhere in
+  this repository, and a test enforces that.
+- **A re-run reproduces every hash and every number exactly; the files differ.**
+  Each record carries the wall clock at which it was written, deliberately
+  outside the hash.
+- **Goodwill cost is an unfalsifiable modelling assumption** and is reported
+  beside the headline net figure, never folded into it.
+- **Model spend is reported in dollars beside the rupee figures, never inside
+  them** — converting would put an unstated exchange rate into a headline
+  number. The whole project cost **₹1,241** in inference.
 
-- **Outcomes are simulated.** There is no production payment data in this
-  project and none is claimed. A hand-written, seeded simulator resolves whether
-  a given intervention would have worked, from latent state the agent cannot
-  see. Its rules are in the repo and were committed before the agent existed.
-- **The failure codes are ours.** `config/failure_taxonomy.yaml` defines
-  fourteen codes, each naming the real-world category it is modeled on. They are
-  not a claim of parity with any payment service provider's live code set.
-- **The failure mix is an assumption.** Three different mixes ship and the
-  headline runs under all three, so a result that only survives under one is
-  visible as such.
-- **Compliance bounds are configurable rules modeled on published e-mandate
-  guidance.** They are not a claim of regulatory compliance. Rules whose
-  parameter we invented are marked `unverified` in the registry and listed in
-  the generated report.
-- **No blockchain, no crypto, no token.** The audit ledger is hash-chained for
-  tamper-evidence — a Merkle-style integrity chain, the same idea as a
-  tamper-evident log file. Nothing here settles on a chain.
+## What I would do next
+
+1. **Finish the top-right cell.** v2 on `gemini-3.7-flash`, ~800 decisions
+   remaining. Both main effects predict it is the configuration that would
+   finally beat the baseline.
+2. **`stop_terminal` is the largest open behavioural gap** — the agent closes
+   invoices as uncollectable that the rules engine recovers by simply asking the
+   payer for a new card. One attempt to fix it by instruction failed
+   (`EXPERIMENTS.md`, v3); the next attempt should be structural.
+3. **Seeds and mixes.** The result is one seed on one mix. The deterministic
+   policies and the oracle sweep both for free; the agent's row does not.
 
 ## Setup
 
@@ -95,38 +229,10 @@ npm test
 npm run typecheck
 ```
 
-No API key is needed to run the tests or, once it exists, the evaluation — agent
-decisions replay from a committed cache.
-
-## Reproducing the numbers
-
-```bash
-npm run eval                      # all four policies against the committed batch
-```
-
-Every figure in this repo comes from `results/checkpoint-main-s42`, which is
-committed in full: metrics, per-case results, and all 27,173 hash-chained audit
-events across the four policies.
-
-To check the trail rather than take it on trust:
-
-```bash
-# re-derive every hash and every link in all four chains
-npm run replay -- --run results/checkpoint-main-s42 --verify
-
-# read one case's decisions as a timeline
-npm run replay -- --run results/checkpoint-main-s42 --case CASE-00002
-```
-
-The second prints, for every step of a case: what the gate permitted, **which
-rule refused each thing it did not**, what the policy chose and the reason it
-gave, and what the world did in response. Add `--policy all` to watch four
-policies handle the same case, or `--full` to see every refusal rather than the
-four most relevant.
-
-A run's chain is verified before any metric is reported. A tampered or truncated
-trail is worse than no trail, because it still looks credible, so `npm run eval`
-refuses to print numbers derived from one.
+No API key is needed for the tests or the evaluation. One is needed only to
+*record* new decisions; copy `.env.example` to `.env` and add a Gemini key.
+`npm run eval` prints which credential it is about to use before it spends
+anything.
 
 ## Licence
 

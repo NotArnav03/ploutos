@@ -12,19 +12,25 @@ other than the headline run, which lives in full — audit ledgers included — 
 | `tune-v2` | tune | v2 | gemini-3.1-flash-lite | ₹53,156.01 |
 | `tune-v3` | tune | v3 | gemini-3.1-flash-lite | ₹21,085.54 |
 
-## Why the audit ledgers are not here
+## What is here
 
-They are 4–5 MB apiece and they regenerate exactly, because the decisions that
-produced them are committed in `.cache/llm/`. Any row rebuilds in about two
-seconds with no API key:
+For each configuration: `metrics.json`, per-case outcomes, and the hash-chained
+audit trails for the agent and for static-policy, so every counter table in
+`docs/EXPERIMENTS.md` can be checked without running anything:
+
+```bash
+npm run behaviour -- --runs results/grid/v1-flash-lite,results/grid/v2-flash-lite
+npm run behaviour -- --runs results/grid/tune-v1,results/grid/tune-v2,results/grid/tune-v3 --batch tune
+```
+
+The ledgers for the three baselines that never vary between these runs
+(do-nothing, naive-retry, oracle) are omitted, since they are identical to the
+copies in `results/checkpoint-main-s42-agent-v1/` and regenerate from the same
+seed. Any full run rebuilds in about two seconds:
 
 ```bash
 npm run eval -- --batch main --prompt v2 --model gemini-3.1-flash-lite
-npm run eval -- --batch tune --prompt v3 --model gemini-3.1-flash-lite
 ```
-
-The headline run keeps its complete trail committed, because that is the one a
-reviewer should be able to audit without running anything at all.
 
 Note that `tune` is a **diagnostic** batch. It over-weights the failure modes
 from C-018 to make them measurable on thirty cases, and `eval` prints a banner
