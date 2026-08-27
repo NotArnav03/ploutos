@@ -49,6 +49,33 @@ describe('committed state reproduces itself', () => {
   });
 });
 
+describe('the default configuration replays offline', () => {
+  it('has recorded decisions for the DEFAULT prompt and model together', async () => {
+    // The two separate checks above can both pass while the pair fails: v2 has
+    // decisions and gemini-3.7-flash has decisions, but v2 ON gemini-3.7-flash
+    // was never finished, so defaulting to that pair would turn a two-second
+    // replay into thousands of live calls against a reviewer's own quota.
+    //
+    // `npm run eval` with no flags is the command the README tells people to
+    // run. This asserts that command costs nothing.
+    const { AGENT_MODEL } = await import('../src/agent/provider.js');
+    const file = path.join(CACHE_DIR, 'decisions.json');
+    if (!existsSync(file)) return;
+    const entries = JSON.parse(readFileSync(file, 'utf8')) as {
+      model: string;
+      prompt_version: string;
+    }[];
+    const pairs = new Set(entries.map((e) => `${e.prompt_version} + ${e.model}`));
+    const wanted = `${PROMPT_VERSION} + ${AGENT_MODEL}`;
+    expect(
+      pairs.has(wanted),
+      `the default pair is ${wanted}, which has no recorded decisions. ` +
+        `Recorded pairs: [${[...pairs].sort().join(', ')}]. Point the defaults at ` +
+        `a pair that replays, or record the missing one.`,
+    ).toBe(true);
+  });
+});
+
 describe('the committed cache cannot be forged by accident', () => {
   it('refuses a stubbed completer that would write to the real cache', async () => {
     const { makeAgent } = await import('../src/agent/agent.js');

@@ -4,7 +4,7 @@ import type { Channel, Language } from '../domain/schemas.js';
 import { addDays, addHours, type Timestamp } from '../domain/time.js';
 import { staticPolicy } from '../policy/static_policy.js';
 import { CACHE_DIR, DecisionCache, cacheKey, type CacheEntry } from './cache.js';
-import { PROMPT_VERSION, SYSTEM_PROMPT, renderCase } from './prompt.js';
+import { PROMPT_VERSION, renderCase, systemPrompt } from './prompt.js';
 import { AgentOutputSchema, outputJsonSchema, type AgentOutput } from './schema.js';
 import { AGENT_MODEL, QuotaExhaustedError, geminiCompleter, type Completer } from './provider.js';
 
@@ -20,6 +20,14 @@ export interface AgentOptions {
   complete?: Completer;
   /** Defaults to the committed cache. */
   cache?: DecisionCache;
+  /**
+   * Which system prompt to use. Defaults to PROMPT_VERSION.
+   *
+   * Selecting it here rather than by editing the file is what makes every row
+   * of docs/EXPERIMENTS.md re-runnable, and what stops an experiment from being
+   * conducted by swapping a source file in the working tree.
+   */
+  promptVersion?: string;
 }
 
 export interface AgentStats {
@@ -82,6 +90,9 @@ const CONSECUTIVE_FAILURE_LIMIT = 20;
  */
 export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats; flush(): void } {
   const model = opts.model ?? AGENT_MODEL;
+  const promptVersion = opts.promptVersion ?? PROMPT_VERSION;
+  // Throws now, on an unknown version, rather than at the first decision.
+  const system = systemPrompt(promptVersion);
 
   // An injected completer means a test or a diagnostic, and neither may write
   // to the committed cache.
@@ -136,7 +147,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
           confidence: null,
           meta: {
             model: null,
-            prompt_version: PROMPT_VERSION,
+            prompt_version: promptVersion,
             tokens_in: null,
             tokens_out: null,
             latency_ms: null,
@@ -146,7 +157,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
       }
 
       const key = cacheKey({
-        prompt_version: PROMPT_VERSION,
+        prompt_version: promptVersion,
         model,
         observation_hash: permitted.observation_hash,
         permitted: permitted.permitted,
@@ -167,7 +178,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
         try {
           completer ??= geminiCompleter({ onRetry: () => stats.retries++ });
           const response = await completer({
-            system: SYSTEM_PROMPT,
+            system,
             user: renderCase(obs, permitted),
             schema: outputJsonSchema(permitted.permitted, permitted.permitted_channels),
             model,
@@ -194,7 +205,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
 
           const entry: CacheEntry = {
             key,
-            prompt_version: PROMPT_VERSION,
+            prompt_version: promptVersion,
             model,
             observation_hash: permitted.observation_hash,
             output,
@@ -227,7 +238,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
             rationale: `agent unavailable (${err instanceof Error ? err.message : String(err)}); ${fb.rationale}`,
             meta: {
               model,
-              prompt_version: PROMPT_VERSION,
+              prompt_version: promptVersion,
               tokens_in: null,
               tokens_out: null,
               latency_ms: Date.now() - started,
@@ -253,7 +264,7 @@ export function makeAgent(opts: AgentOptions = {}): Policy & { stats: AgentStats
         confidence: output.confidence,
         meta: {
           model,
-          prompt_version: PROMPT_VERSION,
+          prompt_version: promptVersion,
           tokens_in: tokensIn,
           tokens_out: tokensOut,
           latency_ms: latency,

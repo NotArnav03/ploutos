@@ -53,6 +53,7 @@ async function main(): Promise<void> {
   // is the only way to change it, which is the only time changing it is
   // meaningful. The cache is keyed on the model, so two models never mix.
   const model = arg(argv, '--model');
+  const promptVersion = arg(argv, '--prompt');
 
   const registry = new RuleRegistry();
   const taxonomy = new TaxonomyIndex();
@@ -98,7 +99,12 @@ async function main(): Promise<void> {
   let agent: ReturnType<typeof makeAgent> | null = null;
 
   for (const name of requested) {
-    if (name === 'agent') agent ??= makeAgent({ noCache, ...(model ? { model } : {}) });
+    if (name === 'agent')
+      agent ??= makeAgent({
+        noCache,
+        ...(model ? { model } : {}),
+        ...(promptVersion ? { promptVersion } : {}),
+      });
     const policy =
       name === 'oracle'
         ? makeOracle(world, seed, registry, staticPolicy)
