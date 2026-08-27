@@ -7,7 +7,7 @@ import { formatINR, paise, type Paise } from '../domain/money.js';
 import { BATCH_DIR, RESULTS_DIR } from '../domain/paths.js';
 import { OracleViolationError, type AnyPolicy } from '../domain/policy.js';
 import { RuleRegistry } from '../domain/rules.js';
-import { TaxonomyIndex } from '../domain/taxonomy.js';
+import { TaxonomyIndex, loadMixes } from '../domain/taxonomy.js';
 import { doNothing, naiveRetry } from '../policy/baselines.js';
 import { staticPolicy } from '../policy/static_policy.js';
 import { makeOracle } from '../world/oracle.js';
@@ -69,6 +69,18 @@ async function main(): Promise<void> {
 
   console.log(`\nbatch ${batch} · ${world.cases.length} cases · mix ${world.meta.mix} · seed ${seed}`);
   console.log(`run ${runId}\n`);
+
+  // A diagnostic mix is a probe, not a benchmark. Saying so once, loudly, at
+  // the top of the output is what stops a number measured on one from being
+  // quoted later as a recovery result.
+  if (loadMixes().mixes[world.meta.mix]?.diagnostic === true) {
+    console.log(
+      `  !! ${world.meta.mix} is a DIAGNOSTIC mix. It over-weights specific failure` +
+        `\n     modes to exercise a defect and is not a claim about reality.` +
+        `\n     Nothing measured here is a recovery result. Use it to read the` +
+        `\n     behavioural counters, never the rupees.\n`,
+    );
+  }
 
   const runs: RunResult[] = [];
   const metrics: Metrics[] = [];
@@ -143,10 +155,12 @@ async function main(): Promise<void> {
       const m = metrics[metrics.length - 1];
       if (m) {
         process.stdout.write(
-          `    $${m.inference_cost_usd.toFixed(2)} of model spend over ${m.model_decisions} decisions` +
-            (m.inference_usd_per_lakh_recovered === null
-              ? `\n`
-              : `, $${m.inference_usd_per_lakh_recovered.toFixed(2)} per Rs 1,00,000 recovered\n`),
+          (m.inference_cost_usd === null
+            ? `    model spend unknown: no published price for ${m.model} in config/costs.yaml\n`
+            : `    $${m.inference_cost_usd.toFixed(2)} of model spend over ${m.model_decisions} decisions` +
+              (m.inference_usd_per_lakh_recovered === null
+                ? `\n`
+                : `, $${m.inference_usd_per_lakh_recovered.toFixed(2)} per Rs 1,00,000 recovered\n`)),
         );
       }
       if (s.api_errors > 0) {

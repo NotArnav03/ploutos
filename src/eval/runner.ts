@@ -69,6 +69,8 @@ export interface RunResult {
   tokens_out: number;
   /** Decisions that came from the model at all, as opposed to forced moves. */
   model_decisions: number;
+  /** Which model decided, so its spend is priced at its own rate. */
+  model: string | null;
 }
 
 export interface RunOptions {
@@ -163,6 +165,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
   let tokensIn = 0;
   let tokensOut = 0;
   let modelDecisions = 0;
+  let modelName: string | null = null;
 
   // Seed the health tracker with the failures that put these invoices in the
   // queue. A merchant already has this history when recovery starts.
@@ -349,6 +352,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
 
       if (decision.meta.model !== null) {
         modelDecisions++;
+        modelName ??= decision.meta.model;
         tokensIn += decision.meta.tokens_in ?? 0;
         tokensOut += decision.meta.tokens_out ?? 0;
       }
@@ -479,6 +483,7 @@ export async function runBatch(opts: RunOptions): Promise<RunResult> {
     tokens_in: tokensIn,
     tokens_out: tokensOut,
     model_decisions: modelDecisions,
+    model: modelName,
   };
 }
 

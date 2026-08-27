@@ -71,10 +71,14 @@ export function cacheKey(input: {
  *
  * A full batch is an hour of paid API calls, and the flush at the end of the
  * run is no use at all if the process dies in minute fifty. Checkpointing costs
- * one file write per five hundred decisions and means a crash loses seconds of
- * work instead of everything.
+ * one file write per hundred decisions and means a crash loses seconds of work
+ * instead of everything.
+ *
+ * A hundred rather than five hundred because of the free tier: a 250-requests
+ * per day quota means an abandoned run costs a whole day, and a 240-decision
+ * batch would never have reached a five-hundred-decision checkpoint at all.
  */
-const AUTOFLUSH_EVERY = 500;
+const AUTOFLUSH_EVERY = 100;
 
 export class DecisionCache {
   private readonly entries = new Map<string, CacheEntry>();

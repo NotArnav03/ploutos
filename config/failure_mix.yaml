@@ -87,3 +87,38 @@ mixes:
       ACCOUNT_CLOSED: 0.07
       INSTRUMENT_BLOCKED: 0.03
       CUSTOMER_DISPUTE: 0.02
+
+  mix_tune:
+    diagnostic: true
+    label: Diagnostic - NOT a claim about reality
+    rationale: >-
+      A deliberately unrepresentative mix, built to exercise the specific
+      defects found in C-018 and nothing else. AFA_REQUIRED is weighted eight
+      times its share in mix_a because the agent lost twelve of those cases by
+      requesting authentication it already had; INSUFFICIENT_FUNDS,
+      INSTRUMENT_EXPIRED and MANDATE_CAP_EXCEEDED are over-weighted because
+      those are where it escalated to a human instead of acting. The terminal
+      codes are dropped entirely - the gate stops them before the model is
+      consulted, so they cost API budget and teach nothing.
+
+      This mix exists so a thirty-case batch can move the behavioural counters
+      that a five-hundred-case batch moves, at a fortieth of the cost. It must
+      never appear in a headline number, and no result measured on it is a
+      result about recovery performance. It is a probe, not a benchmark.
+    hard_share_note: 0% terminal by construction - they are excluded on purpose.
+    weights:
+      INSUFFICIENT_FUNDS: 0.25
+      ISSUER_UNAVAILABLE: 0.08
+      TXN_TIMEOUT: 0.05
+      LIMIT_EXCEEDED: 0.05
+      RISK_HOLD: 0.05
+      INSTRUMENT_EXPIRED: 0.15
+      MANDATE_CAP_EXCEEDED: 0.12
+      PREDEBIT_NOTICE_MISSING: 0.0
+      AFA_REQUIRED: 0.25
+      PSP_DOWN: 0.0
+      MANDATE_REVOKED: 0.0
+      MANDATE_EXPIRED: 0.0
+      ACCOUNT_CLOSED: 0.0
+      INSTRUMENT_BLOCKED: 0.0
+      CUSTOMER_DISPUTE: 0.0

@@ -86,13 +86,19 @@ export interface Metrics {
   // that thinks for free.
   /** Decisions that came from the model rather than being forced moves. */
   model_decisions: number;
+  /** Null for every deterministic policy. */
+  model: string | null;
   inference_tokens_in: number;
   inference_tokens_out: number;
   /**
    * USD. Deliberately not converted into the rupee figures - see
    * config/costs.yaml. Recomputable from the committed audit trail.
+   *
+   * Null when the model that produced the run has no published price in
+   * config/costs.yaml, so an unpriced run reads as "unknown" rather than as
+   * free or as some other model's rate.
    */
-  inference_cost_usd: number;
+  inference_cost_usd: number | null;
   /**
    * Model spend, in USD, per Rs 1,00,000 of value recovered. Two currencies in
    * one ratio on purpose: both units are named, so it needs no exchange rate.
@@ -121,7 +127,10 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
   const recovered = sumPaise(cases.map((c) => c.recovered_paise));
   // Zero for every deterministic policy. The agent has to earn this against a
   // rules engine that thinks for free.
-  const inferenceUsd = costs.inferenceCostUsd(run.tokens_in, run.tokens_out);
+  // Zero for a deterministic policy, which really did spend nothing; null for a
+  // model whose rate this repo does not know.
+  const inferenceUsd =
+    run.model === null ? 0 : costs.inferenceCostUsd(run.tokens_in, run.tokens_out, run.model);
   const interventionCost = sumPaise(cases.map((c) => c.cost_paise));
 
   const goodwill = sumPaise(
@@ -213,11 +222,12 @@ export function computeMetrics(opts: ComputeOptions): Metrics {
     stops_by_rule: stopsByRule,
     fallback_rate: cases.length === 0 ? 0 : fallbacks / cases.length,
     model_decisions: run.model_decisions,
+    model: run.model,
     inference_tokens_in: run.tokens_in,
     inference_tokens_out: run.tokens_out,
     inference_cost_usd: inferenceUsd,
     inference_usd_per_lakh_recovered:
-      recovered === 0 ? null : inferenceUsd / (recovered / 10_000_000),
+      recovered === 0 || inferenceUsd === null ? null : inferenceUsd / (recovered / 10_000_000),
     stalled_steps: stalledSteps,
 
     recovered_ci_low: ciLow,

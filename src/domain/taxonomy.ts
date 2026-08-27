@@ -27,6 +27,14 @@ export const MixSchema = z.object({
   label: z.string().min(1),
   rationale: z.string().min(1),
   hard_share_note: z.string().min(1),
+  /**
+   * A diagnostic mix exists to exercise one defect, not to describe reality.
+   * It is exempt from the structural-hardness invariant that keeps a ceiling
+   * meaningful, and `eval` refuses to let a result measured on one be read as
+   * a headline number. Declaring it here rather than relying on a comment is
+   * what makes that enforceable.
+   */
+  diagnostic: z.boolean().optional(),
   weights: z.record(z.string(), z.number().min(0).max(1)),
 });
 export type Mix = z.infer<typeof MixSchema>;

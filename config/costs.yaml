@@ -76,10 +76,21 @@ goodwill:
 # reported beside the recovery numbers rather than left as an implementation
 # detail. The token counts it multiplies are summed from the audit trail, so
 # anyone can recompute this figure from the committed ledger.
+# Priced per model, because a run can select one with --model and the rates
+# differ by more than a factor of three. Billing every model at the default
+# model's rate is how a README ends up with a cost figure that is simply wrong:
+# the first flash-lite run reported $0.35 when it had actually spent $0.12.
+#
+# Reasoning tokens bill as output. On gemini-3.7-flash they are roughly three
+# quarters of the output on a typical decision, so the output rate is the one
+# that governs the bill.
 inference:
-  model: gemini-3.7-flash
-  # Published list price, read 2026-08-26. Reasoning tokens bill as output,
-  # and on this model they are roughly three quarters of the output on a
-  # typical decision - so the output rate is the one that governs the bill.
-  usd_per_million_input: 0.75
-  usd_per_million_output: 3.75
+  default_model: gemini-3.7-flash
+  # Published list prices, read 2026-08-26 and 2026-08-27.
+  models:
+    gemini-3.7-flash:
+      usd_per_million_input: 0.75
+      usd_per_million_output: 3.75
+    gemini-3.1-flash-lite:
+      usd_per_million_input: 0.25
+      usd_per_million_output: 1.50

@@ -71,6 +71,12 @@ describe('failure mixes', () => {
       it('leaves some value structurally unrecoverable', () => {
         // A mix with no hard failures would let any policy approach 100% and
         // would make the recoverable-ceiling number meaningless.
+        //
+        // A diagnostic mix is exempt precisely because it is not trying to be
+        // a benchmark: mix_tune drops the terminal codes on purpose, since the
+        // gate stops them before the model is consulted and they spend API
+        // budget teaching nothing.
+        if (mix.diagnostic === true) return;
         const hardShare = tax.codes
           .filter((c) => c.class === 'hard')
           .reduce((a, c) => a + (mix.weights[c.code] ?? 0), 0);

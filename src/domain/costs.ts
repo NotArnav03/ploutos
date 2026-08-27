@@ -51,9 +51,13 @@ const CostsFileSchema = z.object({
     attributed_after_contacts: z.number().int().nonnegative(),
   }),
   inference: z.object({
-    model: z.string(),
-    usd_per_million_input: z.number().nonnegative(),
-    usd_per_million_output: z.number().nonnegative(),
+    default_model: z.string(),
+    models: z.record(
+      z.object({
+        usd_per_million_input: z.number().nonnegative(),
+        usd_per_million_output: z.number().nonnegative(),
+      }),
+    ),
   }),
 });
 export type CostsFile = z.infer<typeof CostsFileSchema>;
@@ -88,8 +92,18 @@ export class CostModel {
    * exchange rate would put an unstated assumption inside the headline number.
    * It is reported beside the rupee figures instead.
    */
-  inferenceCostUsd(tokensIn: number, tokensOut: number): number {
-    const p = this.costs.inference;
+  /**
+   * Returns null for a model with no published price in this file.
+   *
+   * Null rather than zero, and null rather than the default model's rate. Both
+   * of those put a confident wrong number where an honest "unknown" belongs -
+   * and the first flash-lite run did exactly that, reporting $0.35 for a run
+   * that had spent $0.12, because --model changed the model and not the rate.
+   */
+  inferenceCostUsd(tokensIn: number, tokensOut: number, model?: string): number | null {
+    const name = model ?? this.costs.inference.default_model;
+    const p = this.costs.inference.models[name];
+    if (!p) return null;
     return (
       (tokensIn / 1_000_000) * p.usd_per_million_input +
       (tokensOut / 1_000_000) * p.usd_per_million_output
@@ -97,7 +111,7 @@ export class CostModel {
   }
 
   get inferenceModel(): string {
-    return this.costs.inference.model;
+    return this.costs.inference.default_model;
   }
 
   messageCost(channel: Channel): Paise {
