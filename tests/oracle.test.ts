@@ -17,7 +17,7 @@ import { makeOracle } from '../src/world/oracle.js';
 const registry = new RuleRegistry();
 const taxonomy = new TaxonomyIndex();
 const costs = new CostModel();
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-oracle-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-oracle-'));
 
 /**
  * Every policy gets its OWN world, because latent state mutates when a payer

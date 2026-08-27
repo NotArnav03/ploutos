@@ -1,5 +1,5 @@
 {
-  "name": "vasooli",
+  "name": "ploutos",
   "version": "0.0.1",
   "private": true,
   "description": "Bounded recovery agent for failed recurring payments on Indian rails",

@@ -30,7 +30,7 @@ const TRAIN_SIZE = 250;
 const registry = new RuleRegistry();
 const taxonomy = new TaxonomyIndex();
 const costs = new CostModel();
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-tune-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-tune-'));
 
 /**
  * Objective: net recovered after mechanical cost.

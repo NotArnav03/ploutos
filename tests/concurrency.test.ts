@@ -12,7 +12,7 @@ import { computeMetrics } from '../src/metrics/compute.js';
 import { generateWorld } from '../src/world/generator.js';
 import { readLedgerFile } from '../src/ledger/ledger.js';
 
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-conc-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-conc-'));
 
 /**
  * A stub that answers deterministically from the case text but at varying

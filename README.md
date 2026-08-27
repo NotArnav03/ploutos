@@ -1,4 +1,4 @@
-# Vasooli
+# Ploutos
 
 **A bounded recovery agent for failed recurring payments on Indian rails.**
 

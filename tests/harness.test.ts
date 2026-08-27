@@ -18,7 +18,7 @@ import type { World } from '../src/world/types.js';
 const registry = new RuleRegistry();
 const taxonomy = new TaxonomyIndex();
 const costs = new CostModel();
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-'));
 
 function world(size = 120, seed = 5): World {
   return generateWorld({ seed, size }).world;

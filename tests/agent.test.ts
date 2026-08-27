@@ -17,7 +17,7 @@ import { generateWorld } from '../src/world/generator.js';
 const registry = new RuleRegistry();
 const taxonomy = new TaxonomyIndex();
 const costs = new CostModel();
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-agent-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-agent-'));
 
 /** A cache that never loads from or writes to disk. */
 function emptyCache(): DecisionCache {

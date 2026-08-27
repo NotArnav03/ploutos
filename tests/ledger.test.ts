@@ -15,7 +15,7 @@ import { generateWorld } from '../src/world/generator.js';
 const registry = new RuleRegistry();
 const taxonomy = new TaxonomyIndex();
 const costs = new CostModel();
-const tmp = mkdtempSync(path.join(tmpdir(), 'vasooli-ledger-'));
+const tmp = mkdtempSync(path.join(tmpdir(), 'ploutos-ledger-'));
 
 async function run(tag: string, ext: string, run_id = 'ledger-fixed'): Promise<string> {
   const ledger_path = path.join(tmp, `${tag}.jsonl${ext}`);
