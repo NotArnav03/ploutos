@@ -198,10 +198,24 @@ npm run behaviour -- --runs results/grid/v1-flash-lite,results/grid/v2-flash-lit
 - **The world is synthetic.** Failure-code distributions are an assumption, not
   a measurement, which is why the headline is run under three different mixes
   rather than one. `config/failure_mix.yaml` argues each.
-- **Compliance parameters carry a `verification` status.** Four are marked
-  `unverified`, meaning the number is ours and not sourced from a primary
-  document. The phrases "RBI compliant" and "NPCI compliant" appear nowhere in
-  this repository, and a test enforces that.
+- **Every compliance parameter carries a `verification` status**, and they were
+  checked against primary sources on 27 Aug 2026:
+  - `AFA_THRESHOLD` ₹15,000 and `PREDEBIT_NOTICE` 24h are **verified** against
+    RBI/DPSS/2026-27/396, the E-mandate Framework 2026.
+  - `CONTACT_HOURS` and `DND_SUPPRESSION` are **analogous** — the regulations
+    are real (RBI/2022-23/108; TRAI TCCCPR) but they bind lenders recovering
+    loans and telecom-resource messaging respectively, not a merchant
+    collecting a subscription. We adopt them voluntarily and say so.
+  - The six remaining `unverified` rules are retry caps and contact limits,
+    which are merchant policy and ours to choose.
+- **One known deviation, in the unsafe direction.** The E-mandate Framework
+  requires the 24-hour pre-debit notice for cards; our rule applies it to UPI
+  Autopay and e-NACH only, so a card debit is presented here without it. It is
+  documented rather than fixed, because changing the permitted set invalidates
+  all 12,738 recorded decisions and the budget for a re-run is gone. See C-026.
+- The phrases "RBI compliant" and "NPCI compliant" appear nowhere in this
+  repository, and a test enforces that. So does a test that no unverified rule
+  claims a regulator requires it.
 - **A re-run reproduces every hash and every number exactly; the files differ.**
   Each record carries the wall clock at which it was written, deliberately
   outside the hash.

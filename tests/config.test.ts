@@ -115,6 +115,36 @@ describe('rules registry', () => {
     }
   });
 
+  it('makes every analogous rule cite what it is analogous TO, and say who it binds', () => {
+    // "analogous" means the number comes from a real regulation that does not
+    // bind a merchant collecting subscription dues. That claim is only worth
+    // anything with the citation attached and the actual addressee named -
+    // otherwise it is "unverified" wearing a better word.
+    for (const r of registry.all()) {
+      if (r.verification.status !== 'analogous') continue;
+      expect(r.verification.source_url, `${r.id} is analogous but cites nothing`).not.toBeNull();
+      expect(
+        /binds|not binding|scope|voluntar|adopted/i.test(r.verification.note),
+        `${r.id}: an analogous rule must say who the source actually binds`,
+      ).toBe(true);
+    }
+  });
+
+  it('never claims regulatory backing for a rule that only resembles one', () => {
+    // The failure mode this guards is a note that reads like an obligation on
+    // us. CONTACT_HOURS is sourced from a circular about banks recovering
+    // overdue loans; describing that as an RBI requirement on a merchant would
+    // be exactly the overclaim this project exists to avoid.
+    for (const r of registry.all()) {
+      if (r.verification.status === 'verified') continue;
+      const note = r.verification.note;
+      expect(
+        /(RBI|NPCI|TRAI) (requires|mandates|prescribes)/i.test(note),
+        `${r.id} is not verified but its note asserts a regulator requires it`,
+      ).toBe(false);
+    }
+  });
+
   it('covers every rule kind', () => {
     for (const kind of ['eligibility', 'compliance', 'rate_limit', 'stop', 'authority'] as const) {
       expect(registry.byKind(kind).length, kind).toBeGreaterThan(0);

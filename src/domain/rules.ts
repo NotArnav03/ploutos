@@ -28,7 +28,22 @@ export const SeveritySchema = z.enum(['critical', 'high', 'medium']);
 export type Severity = z.infer<typeof SeveritySchema>;
 
 export const VerificationSchema = z.object({
-  status: z.enum(['verified', 'unverified']),
+  /**
+   * verified   - the parameter is this value in a primary source that binds
+   *              this actor, and source_url points at it.
+   * analogous  - the parameter comes from a real regulation that does NOT bind
+   *              a merchant collecting subscription dues. We adopt it
+   *              voluntarily. source_url points at it and the note says who it
+   *              actually binds.
+   * unverified - the number is ours.
+   *
+   * The middle state exists because the binary was making us round in the wrong
+   * direction. The recovery-agent contact window is real, sourced, and about
+   * lenders chasing overdue loans - calling that "verified" would imply a
+   * merchant is bound by it, and calling it "unverified" would throw away a
+   * citation that explains exactly where the number came from.
+   */
+  status: z.enum(['verified', 'analogous', 'unverified']),
   source_url: z.string().url().nullable(),
   note: z.string().min(1),
 });

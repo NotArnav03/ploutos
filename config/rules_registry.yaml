@@ -58,12 +58,24 @@ rules:
       notice_hours: 24
       applies_to_rails: [upi_autopay, enach]
     verification:
-      status: unverified
-      source_url: null
+      status: verified
+      source_url: "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13374"
       note: >-
-        24h is OUR parameter. Pre-debit notification is a real requirement for
-        e-mandates; confirm the exact window and its scope against the primary
-        RBI circular before making any compliance claim. Day 9 task.
+        CONFIRMED, 27 Aug 2026, against RBI/DPSS/2026-27/396 dated 21 April
+        2026: "An issuer shall send a pre-transaction notification to the
+        customer, at least 24 hours prior to the actual charge / debit." The
+        24-hour figure is exact.
+
+        KNOWN DEVIATION, and this one is looser than the rule rather than
+        stricter. The framework applies to cards, PPI and UPI. This rule's
+        applies_to_rails is [upi_autopay, enach] - so a card_on_file debit is
+        presented here WITHOUT requiring a notice, and the framework says it
+        needs one. e-NACH, conversely, sits under NPCI's mandate rules rather
+        than this framework, so including it is our own conservatism.
+
+        Correcting the scope changes the permitted set, which invalidates every
+        recorded agent decision and needs a paid re-run. It is logged as a known
+        gap rather than quietly fixed. See docs/CHALLENGES.md C-026.
 
   - id: AFA_THRESHOLD
     kind: compliance
@@ -73,12 +85,20 @@ rules:
     params:
       threshold_paise: 1500000
     verification:
-      status: unverified
-      source_url: null
+      status: verified
+      source_url: "https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13374"
       note: >-
-        Rs 15,000 is OUR parameter, picked because a threshold of that order is
-        widely described for e-mandate AFA. Confirm the current value, and
-        whether it differs by rail, before making any compliance claim. Day 9.
+        CONFIRMED, 27 Aug 2026, against RBI/DPSS/2026-27/396 "Digital Payments -
+        E-mandate Framework, 2026" dated 21 April 2026, which consolidates the
+        earlier e-mandate circulars: "All recurring transactions may be
+        authorised without AFA up to Rs 15,000/- per transaction. Transactions
+        above this amount shall be subject to AFA."
+
+        KNOWN SIMPLIFICATION, stricter than the rule: the same framework permits
+        Rs 1,00,000 without AFA for insurance premiums, mutual fund
+        subscriptions and credit card bill payments. This world does not model
+        payment category, so every invoice is held to Rs 15,000. That costs
+        recovery on large invoices; it cannot cause a compliance breach.
 
   # ---------- rate limits: how hard may we push ----------
   - id: RETRY_CAP_PER_INVOICE
@@ -127,12 +147,22 @@ rules:
       end_hour: 19
       timezone: Asia/Kolkata
     verification:
-      status: unverified
-      source_url: null
+      status: analogous
+      source_url: "https://www.rbi.org.in/scripts/NotificationUser.aspx?Id=12378&Mode=0"
       note: >-
-        09:00-19:00 is OUR parameter. Restricted contact hours for collections
-        are a real constraint; confirm the exact window and which channels it
-        binds before making any compliance claim. Day 9 task.
+        ANALOGOUS, not binding. RBI/2022-23/108 dated 12 August 2022 prohibits
+        regulated entities and their recovery agents from "calling the borrower
+        before 8:00 a.m. and after 7:00 p.m. for recovery of overdue loans".
+
+        It binds banks, AIFIs, NBFCs, HFCs, cooperative banks and ARCs
+        recovering LOANS. A merchant collecting a failed subscription debit is
+        none of those, so this window is adopted voluntarily as the nearest
+        published standard for collections contact in India.
+
+        Our 19:00 end matches exactly. Our 09:00 start is one hour stricter than
+        the 08:00 in the circular, deliberately. Nothing in this repository may
+        describe this rule as an RBI requirement on merchants, because it is
+        not one.
 
   - id: CONTACT_CHANNEL_RATE
     kind: rate_limit
@@ -172,9 +202,24 @@ rules:
     params:
       suppressed_channels: [sms, whatsapp]
     verification:
-      status: unverified
-      source_url: null
-      note: DND registry semantics are real; the exact channel scope here is ours.
+      status: analogous
+      source_url: "https://www.trai.gov.in/faqcategory/unsolicited-commercial-communicationsucc"
+      note: >-
+        SPLIT SCOPE, checked 27 Aug 2026.
+
+        sms: genuinely in scope. TRAI's TCCCPR and the National Customer
+        Preference Register (the DND registry) govern commercial communication
+        over telecom resources, which is SMS and voice.
+
+        whatsapp: NOT in TCCCPR scope. TRAI regulates telecom networks; WhatsApp
+        is an OTT service and sits outside the DLT/DND regime entirely. We
+        suppress it under the same flag anyway, as merchant policy consistent
+        with Meta's own opt-in and template rules - not because TRAI requires
+        it.
+
+        Marked analogous rather than verified because half the channel list is
+        our choice. Suppressing more than the regulation demands cannot cause a
+        breach.
 
   # ---------- stopping rules ----------
   - id: STOP_ON_SETTLED

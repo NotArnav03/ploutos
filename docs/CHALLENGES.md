@@ -811,3 +811,64 @@ never the right default. `vitest.config.ts` sets thirty.
 Worth recording for a reason beyond the fix: I nearly went looking for a
 determinism bug that did not exist. The instinct that saved time was checking
 whether the assertion had run at all before believing what it appeared to say.
+
+### C-026 — Verifying the compliance parameters found one that was wrong
+**Severity: medium, and unfixed on purpose. Cost: ~1 hour.**
+
+Four rules had carried `verification: unverified` since day 1, with notes saying
+the number was ours and had to be checked against a primary source before any
+compliance claim. Checking them produced one confirmation, one confirmation with
+a simplification, and two rules that were citing regulations which do not bind us
+at all — plus one genuine defect.
+
+**AFA_THRESHOLD — confirmed exactly.** RBI/DPSS/2026-27/396, the *Digital
+Payments – E-mandate Framework, 2026* dated 21 April 2026: "All recurring
+transactions may be authorised without AFA up to ₹15,000/- per transaction."
+Our ₹15,000 is right. The framework also allows ₹1,00,000 for insurance
+premiums, mutual funds and credit card bills; we do not model payment category,
+so every invoice is held to the lower bar. Stricter than the rule, so it costs
+recovery and cannot cause a breach.
+
+**PREDEBIT_NOTICE — the number is right and the scope is wrong.** The 24 hours
+is exact: "An issuer shall send a pre-transaction notification to the customer,
+at least 24 hours prior to the actual charge / debit." But the framework applies
+to **cards, PPI and UPI**, and our rule's `applies_to_rails` is
+`[upi_autopay, enach]`.
+
+So a `card_on_file` debit is presented in this simulation **without** the notice
+the framework requires. That is a deviation in the unsafe direction — every
+other simplification here errs strict.
+
+It is logged rather than fixed, and the reason is worth stating plainly:
+correcting the scope changes the permitted set, which is part of the decision
+cache key, which invalidates all 12,738 recorded agent decisions and needs a
+paid re-run the project no longer has budget for. Fixing it silently at the last
+minute would also mean shipping a headline number produced by a gate nobody had
+re-measured. The honest option is the note in `config/rules_registry.yaml`, this
+entry, and the line in the README.
+
+**CONTACT_HOURS and DND_SUPPRESSION — real regulations, wrong addressee.**
+
+RBI/2022-23/108 (12 August 2022) prohibits contacting a borrower "before 8:00
+a.m. and after 7:00 p.m. for recovery of overdue loans" — and binds banks,
+NBFCs, HFCs, cooperative banks and ARCs recovering **loans**. A merchant
+collecting a failed subscription debit is none of those. Our 19:00 matches; our
+09:00 is deliberately one hour stricter than the circular's 08:00.
+
+TRAI's TCCCPR and the DND registry govern commercial communication over
+**telecom resources** — SMS and voice. WhatsApp is an OTT service and sits
+outside that regime entirely. We suppress it under the same flag as merchant
+policy, consistent with Meta's own opt-in rules, not because TRAI says so.
+
+Calling either of those "verified" would imply an obligation that does not
+exist. Calling them "unverified" would throw away a citation that explains
+exactly where the number came from and why it is defensible. The status enum
+gained a third value, `analogous`, meaning *sourced, real, and binding on
+somebody else*. Two tests now enforce what that word costs: an analogous rule
+must carry a `source_url`, and must name who the source actually binds; and no
+rule that is not `verified` may contain a phrase like "RBI requires".
+
+The general lesson is that the binary was making the rounding go the wrong way.
+Given only `verified` and `unverified`, a real-but-inapplicable citation gets
+filed as whichever is more convenient, and "more convenient" drifts toward the
+flattering one.
