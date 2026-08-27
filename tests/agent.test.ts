@@ -254,3 +254,31 @@ describe('decision cache', () => {
     expect(calls).toBe(afterFirst);
   }, 60_000);
 });
+
+describe('model selection', () => {
+  it('asks each model for a thinking level it actually accepts', async () => {
+    const { thinkingLevelFor } = await import('../src/agent/provider.js');
+    // Measured, not assumed: gemini-3.7-flash answers a MINIMAL request with
+    // "HTTP 400 - Thinking level MINIMAL is not supported for this model",
+    // while gemini-3.1-flash-lite accepts it and returns zero thinking tokens.
+    expect(thinkingLevelFor('gemini-3.7-flash')).toBe('low');
+    expect(thinkingLevelFor('gemini-3.1-flash-lite')).toBe('minimal');
+    // Anything unrecognised gets the level every thinking model accepts.
+    expect(thinkingLevelFor('some-future-model')).toBe('low');
+  });
+
+  it('keys the cache separately per model', () => {
+    const base = {
+      prompt_version: PROMPT_VERSION,
+      observation_hash: 'abc',
+      permitted: ['wait', 'retry_debit'],
+      permitted_channels: ['sms'],
+    };
+    // Two models are two different answerers. Sharing a cache entry between
+    // them would report one model's judgement under the other's name, and the
+    // cost figures derived from it would be wrong too.
+    expect(cacheKey({ ...base, model: 'gemini-3.7-flash' })).not.toBe(
+      cacheKey({ ...base, model: 'gemini-3.1-flash-lite' }),
+    );
+  });
+});

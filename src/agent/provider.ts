@@ -33,6 +33,29 @@ export interface Completer {
  */
 export const AGENT_MODEL = 'gemini-3.7-flash';
 
+/**
+ * How hard each model is asked to think.
+ *
+ * Per model, because the levels are not portable: gemini-3.7-flash rejects
+ * MINIMAL outright ("Thinking level MINIMAL is not supported for this model"),
+ * while gemini-3.1-flash-lite accepts it and returns zero reasoning tokens.
+ *
+ * This matters to the bill rather than only to the output. Reasoning tokens are
+ * billed as output and on 3.7-flash they were 344 of a 477-token response - 72%
+ * of the expensive half of every decision.
+ */
+const THINKING: Record<string, string> = {
+  'gemini-3.7-flash': 'low',
+  'gemini-3.5-flash': 'low',
+  'gemini-3.1-flash-lite': 'minimal',
+  'gemini-3.1-flash-lite-preview': 'minimal',
+};
+
+/** Falls back to 'low', which every thinking model accepts. */
+export function thinkingLevelFor(model: string): string {
+  return THINKING[model] ?? 'low';
+}
+
 const ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
 /** Status codes worth trying again. Everything else is a real answer. */
@@ -146,7 +169,7 @@ export function geminiCompleter(
         // discouraged.
         responseJsonSchema: req.schema,
         // These are small judgement calls and there are thousands of them.
-        thinkingConfig: { thinkingLevel: 'low' },
+        thinkingConfig: { thinkingLevel: thinkingLevelFor(req.model) },
       },
     });
 
