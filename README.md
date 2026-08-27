@@ -159,7 +159,7 @@ Full walkthrough, with sequence diagrams and the enforcement points: [docs/ARCHI
 
 ```bash
 npm run eval                        # the table above, ~2s, no API key
-npm test                            # 153 tests
+npm test                            # 154 tests
 ```
 
 Every figure comes from `results/checkpoint-main-s42-agent-v1/`, committed in
