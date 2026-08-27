@@ -151,6 +151,8 @@ decisions live in `.cache/llm/`, keyed on prompt version, model, observation
 hash and the permitted set — so an answer chosen from one menu is never replayed
 against a different one.
 
+Full walkthrough, with sequence diagrams and the enforcement points: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+
 ---
 
 ## Reproducing the numbers

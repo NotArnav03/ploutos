@@ -3,11 +3,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { toTimestamp } from '../src/domain/time.js';
 import { CostModel } from '../src/domain/costs.js';
 import { RuleRegistry } from '../src/domain/rules.js';
 import { TaxonomyIndex } from '../src/domain/taxonomy.js';
 import type { AuditEvent } from '../src/domain/audit.js';
-import { readLedgerFile, verifyChain } from '../src/ledger/ledger.js';
+import { readLedgerFile, verifyChain, hashEvent } from '../src/ledger/ledger.js';
 import { naiveRetry } from '../src/policy/baselines.js';
 import { runBatch } from '../src/eval/runner.js';
 import { generateWorld } from '../src/world/generator.js';
@@ -49,6 +50,20 @@ describe('compressed ledger', () => {
     // ts_wall is the real clock and is deliberately outside the hash, so the
     // two runs differ there and nowhere else.
     expect(gz.map((e) => e.hash)).toEqual(plain.map((e) => e.hash));
+  }, 60_000);
+
+  it('hashes the simulated clock and not the wall clock', async () => {
+    // Asserted directly rather than inferred from two runs agreeing. ts_wall is
+    // reporting metadata - when a record was written - and ts_sim is what the
+    // decision was made against. Hashing the first would make the trail
+    // unreproducible for a reason that has nothing to do with integrity;
+    // failing to hash the second would let a decision be re-dated silently.
+    const events = readLedgerFile(await run('ts-fields', '.gz'));
+    const e = events[10]!;
+    const { hash, ...rest } = e;
+
+    expect(hashEvent({ ...rest, ts_wall: toTimestamp('2001-01-01T00:00:00.000Z') })).toBe(hash);
+    expect(hashEvent({ ...rest, ts_sim: toTimestamp('2001-01-01T00:00:00.000Z') })).not.toBe(hash);
   }, 60_000);
 
   it('produces a chain that still verifies after the round trip', async () => {
