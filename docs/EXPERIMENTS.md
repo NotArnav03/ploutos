@@ -1,81 +1,133 @@
 # Experiments
 
-Every prompt or policy variant that was measured, including the ones that made
-things worse. A tuning log that only records the wins is a story about a
-straight line that did not happen.
+Every prompt and model variant that was measured, including the ones that made
+things worse. A tuning log that records only the wins describes a straight line
+that did not happen.
 
-## How these are judged
+Every row is re-runnable:
 
-On the **behavioural counters**, not on rupees.
+```bash
+npm run eval -- --batch main --prompt v2 --model gemini-3.1-flash-lite
+npm run behaviour -- --runs <run-a>,<run-b> --batch main
+```
 
-The tune batch is 30 cases (`mix_tune`, seed 2026, held out from `main`), and at
-that size a difference in recovered value is mostly sampling noise — the paired
-intervals for these variants overlap heavily. The counters are counts over
-hundreds of decisions and move sharply and consistently, so they are the signal.
-Rupees are reported for context and are not the verdict.
+All three recorded prompt-by-model pairs replay from the committed cache with no
+API key and no network. The fourth was never finished — see the note at the end.
 
-All runs: `gemini-3.1-flash-lite` at `thinkingLevel: minimal`, concurrency 4.
+## The grid, on the 500-case main batch
 
-## Results
+Recovered value, and share of the oracle-derived ceiling of ₹9,13,994.17.
+Static-policy, the hand-tuned rules engine, recovers **₹5,96,091.90 (65.2%)**.
 
-| | v1 | **v2** | v3 | static-policy |
+| | `gemini-3.7-flash` @ low | `gemini-3.1-flash-lite` @ minimal |
+|---|---|---|
+| **prompt v1** | **₹5,85,645 · 64.1%** | ₹3,98,306 · 43.6% |
+| **prompt v2** | *not measured — budget* | ₹5,43,880 · 59.5% |
+
+Both main effects are large, and they point in opposite directions:
+
+- **Model, holding the prompt at v1:** 3.7-flash is worth **+₹1,87,339 (+47%)**.
+- **Prompt, holding the model at flash-lite:** v2 is worth **+₹1,45,574 (+37%)**.
+
+That is why the one confounded run — v2 on flash-lite against a v1-on-3.7-flash
+baseline — looked like a mild regression. Two large effects were cancelling.
+
+### Against the baseline, paired
+
+Both policies run the identical cases, so the per-case difference is the right
+thing to resample. Independent per-policy intervals overlap almost entirely and
+say nothing.
+
+| configuration | agent − static-policy | behind in |
+|---|---|---|
+| v1 · 3.7-flash | −₹10,447 | 54.7% of resamples |
+| v2 · flash-lite | −₹52,212 | 80.5% |
+| v1 · flash-lite | −₹1,97,786 | 99.1% |
+
+**54.7% is a coin flip.** The best configuration measured is statistically tied
+with the rules engine, not behind it. Only the v1/flash-lite result is a genuine
+deficit.
+
+### Behavioural counters
+
+Counts over thousands of decisions, so they move sharply where money moves
+noisily. This is what the prompt work actually bought.
+
+| counter | v1 · 3.7 | v1 · lite | v2 · lite | static |
 |---|---|---|---|---|
-| `wait` decisions | 160 | **82** | 107 | 80 |
-| waited while `retry_debit` was permitted | 123 | **53** | 73 | **0** |
+| model decisions | 2,736 | 3,738 | 3,101 | — |
+| waited while `retry_debit` permitted | 500 | 1,485 | 1,054 | **0** |
+| `handoff_human` | 99 | 58 | **13** | 28 |
+| `stop_terminal` | 15 | — | 76 | **0** |
+| AFA: `request_afa` | 53 | 67 | 41 | 37 |
+| AFA: `retry_debit` | 2 | 1 | **14** | 15 |
+| model spend | $4.98 | $1.73 | $1.80 | $0 |
+| $ per ₹1,00,000 recovered | 0.85 | 0.43 | **0.33** | 0 |
+
+The AFA defect diagnosed in C-018 — requesting authentication the payer had
+already been asked for, then never re-presenting — is **closed by v2** and by
+the prompt alone: 2 → 14 presentments on AFA cases, against static-policy's 15.
+Escalation is closed too, and overshoots: 99 → 13 against static's 28.
+
+Flash-lite's weakness has a clear shape. On the identical v1 prompt it waits
+**three times as often** while a presentment is on the menu (1,485 vs 500). A
+model asked to think with zero reasoning tokens is markedly more passive.
+
+## Prompt iteration, on the 30-case tune batch
+
+`mix_tune`, seed 2026, held out from `main`, `gemini-3.1-flash-lite`. A
+diagnostic probe that over-weights the C-018 failure modes; `eval` prints a
+banner saying nothing measured on it is a recovery result. Judged on counters,
+not rupees — at 30 cases the paired intervals for these variants overlap
+heavily.
+
+| | v1 | **v2** | v3 | static |
+|---|---|---|---|---|
+| `wait` | 160 | **82** | 107 | 80 |
+| waited while `retry_debit` permitted | 123 | **53** | 73 | 0 |
 | `retry_debit` on AFA cases | 1 | **3** | 1 | 4 |
-| `request_afa` on AFA cases | 19 | 14 | 14 | 12 |
 | `handoff_human` | 7 | **2** | 3 | 4 |
 | `stop_terminal` | 9 | 10 | 11 | **0** |
-| total model decisions | 268 | **194** | 194 | — |
+| model decisions | 268 | **194** | 194 | — |
 | recovered | ₹19,040 | **₹53,156** | ₹21,086 | ₹76,595 |
-| of ceiling | 23.1% | **64.4%** | 25.5% | 92.8% |
-| model spend | $0.13 | $0.11 | $0.11 | $0 |
 
-**v2 is the current best and is what HEAD carries.**
+### v1 → v2 worked
 
-## v1 → v2: the diagnosed fixes worked
+Three factual additions, none of them a compliance rule: what a presentment,
+message and handoff cost in rupees against invoice size; that AFA is unblocked
+by one request and sits behind an expiring mandate; that escalation is not a
+free way to be careful. Plus a `WAITING` section: wait until something could
+actually have changed.
 
-Three additions, all factual and none of them a compliance rule: what a
-presentment, message and handoff cost in rupees against invoice size; that AFA
-is unblocked by one request and sits behind an expiring mandate; that escalation
-is not a free way to be careful. Plus a `WAITING` section telling the model to
-wait until something could actually have changed.
+The waiting section also cut decisions 268 → 194 on this batch, a 28% cost
+reduction as a **side effect of better behaviour** rather than a trade against
+it. That did not transfer to `main`, where decisions rose — the tune batch has
+no terminal codes and a very different mix, and behaviour tuned on it does not
+automatically generalise.
 
-Idle retries fell 123 → 53, handoffs 7 → 2, and recovery nearly tripled. The
-`WAITING` section also cut total decisions 268 → 194, which is a 28% cost
-reduction as a side effect of better behaviour rather than a trade against it.
+### v2 → v3 backfired
 
-## v2 → v3: telling the model its budgets were scarce made it hoard them
+v3 named the real budgets — four presentments, four lifetime messages — after
+watching the agent spend all four contacts re-requesting authentication on one
+₹18,293 invoice and then hand it to a human with nothing left.
 
-v3 added two things to v2.
+It hoarded them instead. Waiting rose 82 → 107, idle retries 53 → 73, AFA
+retries fell back to 1. **An unspent message recovers exactly as much as a
+wasted one.** A second paragraph aimed at `stop_terminal` moved that counter
+from 10 to 11, which is to say not at all.
 
-A **TWO BUDGETS** section stating the real caps — four presentments and four
-lifetime messages per invoice — after observing the agent spend all four
-contacts on repeated authentication requests for one ₹18,293 invoice and then
-hand it to a human with nothing left.
+Reverted. v3's text and its decisions are both kept, so the row re-runs.
 
-And a paragraph telling it that `stop_terminal` is not a cheaper `handoff_human`,
-after v2 cut handoffs 7 → 2 while `stop_terminal` stayed at 10 — the model had
-simply switched give-up doors.
+## The cell that was never measured
 
-Both failed, and one backfired. Waiting rose 82 → 107, idle retries 53 → 73,
-and retries on AFA cases fell back to 1. Naming the budget as scarce made the
-model conserve it, which is worse than the overspending it was meant to fix: an
-unspent message recovers exactly as much as a wasted one. The `stop_terminal`
-paragraph moved that counter 10 → 11, i.e. not at all.
+**v2 on `gemini-3.7-flash`** is the configuration both main effects predict
+should be best, and it is the one that was not finished: the account's
+prepayment credits were exhausted 2,300 decisions into roughly 3,100. Those
+2,300 are committed, so resuming would cost only the remainder.
 
-Reverted. v3's decisions stay in the committed cache so the comparison is
-reproducible, but `PROMPT_VERSION` is back to `v2`.
+The circuit breaker abandoned that run rather than publishing ~3,000
+static-policy fallbacks under the agent's name, which is the behaviour C-019
+added it for.
 
-## Still open
-
-`stop_terminal` at 10 against static-policy's 0 is the largest remaining
-behavioural gap, and it costs real money: four `INSTRUMENT_EXPIRED` cases closed
-as "unrecoverable" that static-policy recovered by simply asking the payer for a
-new card. One attempt at fixing it by instruction failed. The next attempt
-should probably be structural rather than persuasive — `stop_terminal` is only
-ever correct when a stop rule has already fired, so the gate may be the right
-place to enforce that, not the prompt.
-
-That is a change to the action space rather than to the wording, so it is a
-separate decision and not a tuning iteration.
+Total spend across every experiment on this page: **₹1,241** (12,738 recorded
+decisions).
