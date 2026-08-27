@@ -1,4 +1,4 @@
-import type { Action, ActionType } from '../domain/actions.js';
+import { POLICY_JUDGED_UNCOLLECTABLE, type Action, type ActionType } from '../domain/actions.js';
 import type { Policy, PolicyDecision, PolicyInput } from '../domain/policy.js';
 import type { Channel, Language } from '../domain/schemas.js';
 import { addDays, addHours, type Timestamp } from '../domain/time.js';
@@ -359,13 +359,28 @@ function assemble(
           priority: obs.invoice.amount_paise >= 500_000 ? 'high' : 'normal',
         },
       };
-    case 'stop_terminal':
+    case 'stop_terminal': {
+      // A stop is one of two very different events and the trail has to be able
+      // to tell them apart.
+      //
+      // If a stop rule has already fired, the case is closed because a rule
+      // says so, and that rule's id is the honest record. If none has, this is
+      // the model choosing to give up while the gate would still have let it
+      // act - a judgement, not a fact. Recording that under
+      // STOP_ON_ATTEMPTS_EXHAUSTED, as this did, put the id of a rule that
+      // never fired into the audit trail, and asserted the invoice was
+      // unrecoverable when four of them were recovered by static-policy doing
+      // nothing cleverer than asking the payer for a new card.
+      const ruled = obs.stopped_reason !== null;
       return {
         action: {
           type: 'stop_terminal',
-          rule_id: obs.stopped_reason ?? 'STOP_ON_ATTEMPTS_EXHAUSTED',
-          disposition: 'closed_unrecoverable',
+          rule_id: ruled ? obs.stopped_reason! : POLICY_JUDGED_UNCOLLECTABLE,
+          // written_off is a decision the merchant made. closed_unrecoverable
+          // is a claim about the world, and only a rule gets to make it.
+          disposition: ruled ? 'closed_unrecoverable' : 'written_off',
         },
       };
+    }
   }
 }

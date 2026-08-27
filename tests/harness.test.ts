@@ -1,13 +1,15 @@
+import { makeAgent } from '../src/agent/agent.js';
+import { DecisionCache } from '../src/agent/cache.js';
 import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { ACTION_TYPES } from '../src/domain/actions.js';
+import { ACTION_TYPES, POLICY_JUDGED_UNCOLLECTABLE } from '../src/domain/actions.js';
 import { CostModel } from '../src/domain/costs.js';
 import { RuleRegistry } from '../src/domain/rules.js';
 import { TaxonomyIndex } from '../src/domain/taxonomy.js';
 import type { AuditEvent } from '../src/domain/audit.js';
-import { verifyChain } from '../src/ledger/ledger.js';
+import { readLedgerFile, verifyChain } from '../src/ledger/ledger.js';
 import { doNothing, naiveRetry } from '../src/policy/baselines.js';
 import { ENFORCED_BY_VOCABULARY } from '../src/policy/gate.js';
 import { runBatch, type RunResult } from '../src/eval/runner.js';
@@ -254,4 +256,62 @@ describe('metrics', () => {
     expect(m.notices_total).toBeGreaterThan(0);
     expect(m.contacts_total).toBe(0); // naive-retry sends no collections messages
   });
+});
+
+describe('stop provenance', () => {
+  it('never records a voluntary stop under a rule that did not fire', async () => {
+    // Two very different events share one action type. A stop rule firing is a
+    // fact about the invoice; a policy giving up while it still had permitted
+    // moves is a judgement about it. The agent used to record the second under
+    // STOP_ON_ATTEMPTS_EXHAUSTED with disposition closed_unrecoverable - the id
+    // of a rule that never fired, and a claim of impossibility about invoices
+    // that static-policy went on to recover.
+    const ids = new Set(registry.all().map((r) => r.id));
+    const run = await runBatch({
+      world: generateWorld({ seed: 55, size: 40 }).world,
+      policy: makeAgent({
+        complete: async (req) => ({
+          // Always give up, so every stop in this run is a voluntary one.
+          output: {
+            diagnosis: 'd',
+            action_type: (
+              (req.schema['properties'] as Record<string, { enum: string[] }>)['action_type']!
+            ).enum.includes('stop_terminal')
+              ? 'stop_terminal'
+              : 'wait',
+            channel: null,
+            wait_hours: 12,
+            language: null,
+            rationale: 'r',
+            confidence: 0.5,
+          },
+          tokens_in: 1,
+          tokens_out: 1,
+        }),
+        cache: new DecisionCache(mkdtempSync(path.join(tmpdir(), 'stopprov-'))),
+        model: 'stub',
+      }),
+      registry,
+      taxonomy,
+      costs,
+      run_id: 'stopprov',
+      ledger_path: path.join(mkdtempSync(path.join(tmpdir(), 'stopprov-l-')), 's.jsonl'),
+      seed: 55,
+    });
+    expect(run.cases.length).toBe(40);
+
+    const events = readLedgerFile(run.ledger_path);
+    const stops = events.filter((e) => e.decision?.action.type === 'stop_terminal');
+    expect(stops.length).toBeGreaterThan(0);
+
+    for (const e of stops) {
+      const a = e.decision!.action as { rule_id: string; disposition: string };
+      // Every id is either a real rule or the explicit judgement sentinel.
+      expect(ids.has(a.rule_id) || a.rule_id === POLICY_JUDGED_UNCOLLECTABLE).toBe(true);
+      // And only a rule gets to claim the invoice was unrecoverable.
+      if (a.rule_id === POLICY_JUDGED_UNCOLLECTABLE) {
+        expect(a.disposition).toBe('written_off');
+      }
+    }
+  }, 60_000);
 });

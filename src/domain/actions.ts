@@ -113,10 +113,28 @@ export const HandoffHumanSchema = z.object({
 
 export const StopTerminalSchema = z.object({
   type: z.literal('stop_terminal'),
-  /** Must be a rule_id from the rules registry. */
+  /**
+   * Why the case was closed: a rule_id from the rules registry when a stop rule
+   * fired, or `POLICY_JUDGED_UNCOLLECTABLE` when the policy chose to stop while
+   * the gate would still have let it act.
+   *
+   * The distinction is the point. A rule firing is a fact about the invoice; a
+   * policy giving up is a judgement about it, and a trail that records the
+   * second under the first is claiming something that did not happen.
+   */
   rule_id: z.string(),
   disposition: z.enum(['written_off', 'suspended', 'closed_unrecoverable']),
 });
+
+/**
+ * Stop id for a policy that gave up while it still had permitted moves.
+ *
+ * Deliberately NOT in the rules registry: that file is rules the gate enforces,
+ * and a test asserts every entry in it is enforced at runtime or by the action
+ * vocabulary. This is neither. It is a label for a decision, and giving it a
+ * registry entry would make the registry's own invariant false.
+ */
+export const POLICY_JUDGED_UNCOLLECTABLE = 'POLICY_JUDGED_UNCOLLECTABLE';
 
 // ---- the union -------------------------------------------------------------
 
