@@ -1,0 +1,197 @@
+{
+  "recorded_at": "2026-08-27T15:05:30.500Z",
+  "mode": "test",
+  "note": "Every request and response below is real, against Razorpay test mode. Credentials are redacted. Nothing in npm run eval calls any of this.",
+  "coverage": {
+    "send_payment_link": "live",
+    "retry_debit": "unavailable",
+    "switch_rail": "unavailable",
+    "serve_predebit_notice": "unavailable",
+    "request_afa": "unavailable",
+    "request_instrument_update": "unavailable",
+    "grant_grace": "unavailable",
+    "wait": "not-applicable",
+    "notify_soft": "not-applicable",
+    "capture_promise_to_pay": "not-applicable",
+    "handoff_human": "not-applicable",
+    "stop_terminal": "not-applicable"
+  },
+  "caveats": [
+    "POST /v1/plans returned 401 (HTTP 401: Unauthorized). Razorpay Subscriptions is a separately-enabled product and this test account does not have it, so the mandate actions (retry_debit, request_afa, serve_predebit_notice) have no live counterpart here. They are marked unavailable rather than mocked."
+  ],
+  "failure_classification_examples": [
+    {
+      "taxonomy_code": "AFA_REQUIRED",
+      "confidence": "structural",
+      "raw_reason": "incorrect_otp",
+      "note": "failed at the authentication step, which is what AFA_REQUIRED models"
+    },
+    {
+      "taxonomy_code": "ISSUER_UNAVAILABLE",
+      "confidence": "structural",
+      "raw_reason": "payment_failed",
+      "note": "source=issuer_bank, which is infrastructure rather than payer intent"
+    },
+    {
+      "taxonomy_code": null,
+      "confidence": "unmapped",
+      "raw_reason": "payment_failed",
+      "note": "no structural signal in the error envelope. Razorpay publishes the full reason list only as a spreadsheet, so mapping this string would be a guess."
+    }
+  ],
+  "transcript": [
+    {
+      "method": "POST",
+      "path": "/payment_links",
+      "request": {
+        "amount": 1936913,
+        "currency": "INR",
+        "description": "Recovery of failed invoice INV-00005",
+        "customer": {
+          "name": "Asha Menon",
+          "email": "asha.menon@example.com",
+          "contact": "+919812345678"
+        },
+        "reference_id": "ploutos-INV-00005-1787843129409",
+        "expire_by": 1788447929,
+        "notify": {
+          "sms": false,
+          "email": false
+        },
+        "reminder_enable": false,
+        "notes": {
+          "source": "ploutos"
+        }
+      },
+      "status": 200,
+      "response": {
+        "accept_partial": false,
+        "allow_full_payment": false,
+        "amount": 1936913,
+        "amount_paid": 0,
+        "cancelled_at": 0,
+        "created_at": 1787843126,
+        "currency": "INR",
+        "customer": {
+          "contact": "+919812345678",
+          "email": "asha.menon@example.com",
+          "name": "Asha Menon"
+        },
+        "description": "Recovery of failed invoice INV-00005",
+        "expire_by": 1788447929,
+        "expired_at": 0,
+        "first_min_partial_amount": 0,
+        "id": "plink_TUpy3MQV8kwnxJ",
+        "notes": {
+          "source": "ploutos"
+        },
+        "notify": {
+          "email": false,
+          "sms": false,
+          "whatsapp": false
+        },
+        "payment_plan": false,
+        "payments": null,
+        "reference_id": "ploutos-INV-00005-1787843129409",
+        "reminder_enable": false,
+        "reminders": [],
+        "short_url": "https://rzp.io/rzp/XXcpo1Dm",
+        "status": "created",
+        "updated_at": 1787843126,
+        "upi_link": false,
+        "user_id": "",
+        "whatsapp_link": false
+      }
+    },
+    {
+      "method": "GET",
+      "path": "/payment_links/plink_TUpy3MQV8kwnxJ",
+      "request": null,
+      "status": 200,
+      "response": {
+        "accept_partial": false,
+        "allow_full_payment": false,
+        "amount": 1936913,
+        "amount_paid": 0,
+        "cancelled_at": 0,
+        "created_at": 1787843126,
+        "currency": "INR",
+        "customer": {
+          "contact": "+919812345678",
+          "email": "asha.menon@example.com",
+          "name": "Asha Menon"
+        },
+        "description": "Recovery of failed invoice INV-00005",
+        "expire_by": 1788447929,
+        "expired_at": 0,
+        "first_min_partial_amount": 0,
+        "id": "plink_TUpy3MQV8kwnxJ",
+        "notes": {
+          "source": "ploutos"
+        },
+        "notify": {
+          "email": false,
+          "sms": false,
+          "whatsapp": false
+        },
+        "payment_plan": false,
+        "payments": [],
+        "reference_id": "ploutos-INV-00005-1787843129409",
+        "reminder_enable": false,
+        "reminders": {},
+        "short_url": "https://rzp.io/rzp/XXcpo1Dm",
+        "status": "created",
+        "updated_at": 1787843126,
+        "upi_link": false,
+        "user_id": "",
+        "whatsapp_link": false
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/orders",
+      "request": {
+        "amount": 1936913,
+        "currency": "INR",
+        "receipt": "ploutos-INV-00005-1787843130170",
+        "notes": {
+          "source": "ploutos"
+        }
+      },
+      "status": 200,
+      "response": {
+        "amount": 1936913,
+        "amount_due": 1936913,
+        "amount_paid": 0,
+        "attempts": 0,
+        "created_at": 1787843126,
+        "currency": "INR",
+        "entity": "order",
+        "id": "order_TUpy3hWDLpqVGw",
+        "notes": {
+          "source": "ploutos"
+        },
+        "offer_id": null,
+        "receipt": "ploutos-INV-00005-1787843130170",
+        "status": "created"
+      }
+    },
+    {
+      "method": "POST",
+      "path": "/plans",
+      "request": {
+        "period": "monthly",
+        "interval": 1,
+        "item": {
+          "name": "Ploutos mandate probe",
+          "amount": 14900,
+          "currency": "INR"
+        }
+      },
+      "status": 401,
+      "response": {
+        "error": "Unauthorized"
+      }
+    }
+  ]
+}

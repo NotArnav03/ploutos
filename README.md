@@ -191,6 +191,37 @@ npm run behaviour -- --runs results/grid/v1-flash-lite,results/grid/v2-flash-lit
 
 ---
 
+## Razorpay test-mode adapter
+
+The actions the agent chooses correspond to real gateway calls. `npm run
+razorpay-demo` exercises them against Razorpay **test mode** and writes
+`results/razorpay-transcript.json` — every request and response, credentials
+redacted.
+
+| action | status |
+|---|---|
+| `send_payment_link` | **live** — creates a real Payment Link, verified by fetching it back |
+| `retry_debit`, `request_afa`, `serve_predebit_notice`, `switch_rail`, `request_instrument_update`, `grant_grace` | **unavailable on this account** |
+| `wait`, `notify_soft`, `capture_promise_to_pay`, `handoff_human`, `stop_terminal` | not applicable — never leave the merchant's own systems |
+
+The mandate actions are unavailable because **Razorpay Subscriptions is a
+separately-enabled product** and this test account does not have it:
+`POST /v1/plans` returns a bare `{"error":"Unauthorized"}`. That is recorded in
+the transcript as a real 401 rather than mocked, because a mocked mandate call
+demonstrates nothing.
+
+Failure classification maps only what Razorpay's error envelope states
+structurally — `step` and `source` are documented and stable. It returns
+`null` for everything else and carries the raw `reason` through, because the
+complete reason list is published only as a spreadsheet linked from their docs,
+and a mapping table built by guessing at those strings would look authoritative
+and be fiction.
+
+**None of this is in the evaluation path.** `tests/boundary.test.ts` fails the
+build if `src/eval`, `src/policy`, `src/agent` or `src/domain` imports
+`src/razorpay` — a measured number must never depend on a gateway being
+reachable.
+
 ## Honesty notes
 
 - **Every number here comes from a committed run.** Nothing is estimated,

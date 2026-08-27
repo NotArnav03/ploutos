@@ -29,6 +29,33 @@ const FORBIDDEN: ReadonlyArray<{ dir: string; mustNotImport: string; why: string
     mustNotImport: 'world',
     why: 'the observable domain must not depend on the simulator',
   },
+  // The second boundary: the evaluation must never reach a live gateway.
+  //
+  // src/razorpay talks to api.razorpay.com. If the decision path or the harness
+  // could import it, a measured number could come to depend on a network call,
+  // a test key, or a merchant account being up - and the claim that
+  // `npm run eval` runs offline from committed decisions would quietly stop
+  // being true.
+  {
+    dir: 'src/eval',
+    mustNotImport: 'razorpay',
+    why: 'a measured run must never depend on a live gateway being reachable',
+  },
+  {
+    dir: 'src/policy',
+    mustNotImport: 'razorpay',
+    why: 'policy decisions must not depend on a network call',
+  },
+  {
+    dir: 'src/agent',
+    mustNotImport: 'razorpay',
+    why: 'the agent decides from the observation, not from a gateway lookup',
+  },
+  {
+    dir: 'src/domain',
+    mustNotImport: 'razorpay',
+    why: 'the domain model must not depend on one gateway vendor',
+  },
 ];
 
 function tsFilesIn(dir: string): string[] {

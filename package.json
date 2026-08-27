@@ -18,7 +18,8 @@
     "replay": "tsx src/cli/replay.ts",
     "tune": "tsx src/cli/tune.ts",
     "migrate-cache": "tsx src/cli/migrate_cache.ts",
-    "behaviour": "tsx src/cli/behaviour.ts"
+    "behaviour": "tsx src/cli/behaviour.ts",
+    "razorpay-demo": "tsx src/cli/razorpay_demo.ts"
   },
   "dependencies": {
     "yaml": "^2.6.1",
