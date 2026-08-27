@@ -1,4 +1,5 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { CostModel } from '../domain/costs.js';
 import { RuleRegistry } from '../domain/rules.js';
@@ -159,7 +160,11 @@ async function main(): Promise<void> {
     taxonomy: new TaxonomyIndex(),
     costs: new CostModel(),
     run_id: 'migrate',
-    ledger_path: path.join(CACHE_DIR, 'migrate.jsonl'),
+    // A scratch directory, not CACHE_DIR. The first version wrote this
+    // ledger next to the committed decisions, and 14.5 MB of throwaway
+    // replay trail went into the repository - more than half its size, for
+    // a file nothing reads.
+    ledger_path: path.join(mkdtempSync(path.join(tmpdir(), 'ploutos-migrate-')), 'migrate.jsonl'),
     seed: Number(arg(argv, '--seed') ?? 42),
     // The committed run's concurrency is irrelevant now: observations no longer
     // depend on it, which is the whole point of the fix being migrated.

@@ -5,6 +5,9 @@ node_modules/
 *.log
 .DS_Store
 .cache/llm/*.tmp
+# Replay ledgers written by migrate-cache. Throwaway, and one of them was
+# 14.5 MB - larger than everything else in the repository combined.
+.cache/llm/*.jsonl
 
 # Regenerable from seed via `npm run gen -- --size 2000 --name stress`; too large to commit.
 data/batches/stress.*
