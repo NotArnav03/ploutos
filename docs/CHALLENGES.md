@@ -719,3 +719,95 @@ now reproduces the committed checkpoint in 1.7 seconds — 2,736 cached, 0 live.
 
 The general point is that "the cache is invalid, re-run it" was the expensive
 reflex, and thirty seconds of counting showed 97.6% of it was fine.
+
+### C-023 — I ran an experiment by swapping a source file, and git swept it up
+**Severity: high. Cost: one wasted run and about forty minutes.**
+
+To measure the model in isolation I needed the old prompt back temporarily, so I
+checked v1 into the working tree, ran the batch, and checked v2 back out
+afterwards. It worked.
+
+Then, between that run and the next, I made an unrelated commit with `git add
+-A`. The working tree still held v1. The commit — titled "add npm run behaviour"
+— silently took `PROMPT_VERSION` back to v1.
+
+The next run was the headline run: prompt v2 on the expensive model, budgeted at
+₹590. It reported this:
+
+```
+ran agent  3665ms   2736 cached, 0 live call(s)
+agent      ₹5,85,644.72   34.3%   64.1%
+```
+
+Those are v1's numbers, replayed from v1's cache, printed under a heading that
+said v2. Every figure in that table was real; the label was wrong.
+
+**It cost nothing, and that is the only reason it was cheap to find.** A run that
+spends ₹0 when it should spend ₹590 is loud. The reverse — spending ₹590 on a
+configuration I believed was something else — would have been silent, and the
+number would have gone into the README.
+
+Nothing automatic catches this. `tests/reproducible.test.ts` asserts the
+committed cache holds decisions for whatever `PROMPT_VERSION` is in HEAD, and it
+passed throughout, because v1 has decisions too. That test catches an unmeasured
+prompt. It cannot catch the wrong measured one.
+
+The fix is not git discipline, it is not running experiments by editing source.
+All three prompts now live in a `PROMPTS` record and are chosen with `--prompt`,
+so an experiment never touches the working tree, and every row of
+`docs/EXPERIMENTS.md` is re-runnable by someone who is not me. A further test
+asserts the *pair* of default prompt and default model has recorded decisions —
+the two separate checks could both pass while the pair failed, which is exactly
+the state the repo was briefly in.
+
+### C-024 — I argued from a prior when I had said nobody knew
+**Severity: medium. Cost: roughly ₹350 of detours.**
+
+Asked whether a cheaper model with no reasoning tokens would hurt, I wrote that
+the honest answer was that nobody knows until it is measured — and then argued
+myself into a prior anyway: the diagnosed failure was informational rather than
+computational, the decision is a choice among 7-12 pre-filtered options, so
+extended reasoning should not matter much. I costed a three-arm test at ₹174 and
+presented it as optional.
+
+It was declined, reasonably, and I proceeded on the prior.
+
+Measured afterwards, on the identical prompt: `gemini-3.7-flash` recovers
+₹5,85,645 and `gemini-3.1-flash-lite` at zero reasoning tokens recovers
+₹3,98,306. **The model is worth 47%.** The counter that explains it is simple:
+flash-lite waits while a presentment is permitted 1,485 times against 500.
+
+Finding that out the long way — a confounded run, then a disambiguation run —
+cost more than the test would have. The lesson is not "prefer bigger models". It
+is that when the honest answer is "this needs measuring", the ₹174 is the
+answer, and my own reasoning about why it probably will not matter is worth less
+than I priced it.
+
+### C-025 — A timeout that reported itself as a correctness failure
+**Severity: medium. Cost: ~15 minutes, and a genuinely alarming ten of them.**
+
+After adding a test, this started failing:
+
+```
+FAIL tests/harness.test.ts > determinism > produces identical results for the same seed and world
+```
+
+In a project whose central claim is that a run reproduces exactly from its seed,
+that is the worst line to see. It failed consistently in the full suite and
+passed in isolation, which pointed at cross-file interference and sent me
+looking for shared state.
+
+It was a timeout. The test carried no timeout argument, took 4,997ms by itself
+against vitest's 5,000ms default, and tipped over the moment another test in the
+same file added load. Its assertion never ran — vitest reports a timeout in the
+same place, and with the same red, as a failed expectation.
+
+Most tests here are not unit tests. They run real batches through the real
+harness, hundreds of cases with a full gzipped ledger write apiece, because
+determinism, chain integrity, the ceiling invariant and harm counts are
+properties of whole runs and cannot be observed on a mock. Five seconds was
+never the right default. `vitest.config.ts` sets thirty.
+
+Worth recording for a reason beyond the fix: I nearly went looking for a
+determinism bug that did not exist. The instinct that saved time was checking
+whether the assertion had run at all before believing what it appeared to say.
