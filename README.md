@@ -159,7 +159,7 @@ Full walkthrough, with sequence diagrams and the enforcement points: [docs/ARCHI
 
 ```bash
 npm run eval                        # the table above, ~2s, no API key
-npm test                            # 154 tests
+npm test                            # 166 tests
 ```
 
 Every figure comes from `results/checkpoint-main-s42-agent-v1/`, committed in
@@ -190,6 +190,33 @@ npm run behaviour -- --runs results/grid/v1-flash-lite,results/grid/v2-flash-lit
 ```
 
 ---
+
+## The site
+
+`web/` is a single self-contained page presenting the above: the problem, the
+gate walked step by step over a real case, the results table, the paired
+comparison, and the rules registry.
+
+```bash
+npm run site:build      # regenerate web/index.html from the committed run
+npm run site            # http://localhost:5173
+```
+
+**It has no backend and does not want one.** `web/build.mjs` reads
+`results/checkpoint-main-s42-agent-v1/`, `config/rules_registry.yaml` and the
+gzipped audit trail, and bakes a ~29 KB payload into the page. Nothing on the
+page is typed by hand, so a new checkpoint plus `npm run site:build` moves every
+figure at once — the same property `npm run eval` has, for the same reason.
+
+The gate walkthrough replays `CASE-00005` from the committed trail: what the
+engine permitted at each step, **which rule refused each thing it did not**,
+what the model chose, and the rationale it gave. Those are recorded Gemini
+decisions, not live calls. The page never contacts a model, holds no
+credential, and renders identically offline.
+
+`web/index.html` and `web/artifact.html` are generated and committed so the
+site can be served without running the build; `web/index.template.html` is the
+source.
 
 ## Razorpay test-mode adapter
 

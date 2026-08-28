@@ -1,0 +1,1522 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ploutos</title>
+<meta name="description" content="A bounded recovery agent for failed recurring payments on Indian rails. The policy engine owns the guardrails; the model chooses only within them.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600&family=Cinzel:wght@600&family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=IBM+Plex+Mono:wght@400;500&display=swap">
+
+<style>
+/* ==========================================================================
+   PLOUTOS
+   Πλοῦτος — the god of wealth, blinded by Zeus so that he could not tell
+   the deserving from the undeserving when handing his bounty out.
+
+   The palette is taken from the materials the surviving Ploutos is made of:
+   the soil of Hesiod's thrice-ploughed field, the verdigris of Kephisodotos'
+   bronze, the warm marble of the Roman copies, and the terracotta of Attic
+   red-figure ware. Every neutral is biased olive, because the ground of this
+   story is a field.
+
+   Motion is taken from Lucian, who has Ploutos describe himself twice over:
+   lame on the way in — "my legs are like lead, and I can hardly get to my
+   journey's end" — and winged on the way out, "swifter than any dream."
+   So --ease-lame governs everything that arrives and --ease-winged everything
+   that leaves. It is a real constraint applied throughout, not a joke in a
+   comment.
+
+   The page commits to a single dark world on purpose: this is a night field
+   and a bronze. Every colour is painted explicitly from a token so it holds
+   on any host ground.
+   ========================================================================== */
+
+:root {
+  /* -- ground: the thrice-ploughed field ---------------------------------- */
+  --soil:        #0A0C09;
+  --soil-1:      #0F1310;
+  --soil-2:      #151A14;
+  --soil-3:      #1B211A;
+  --line:        #262D24;
+  --line-soft:   #1C2219;
+
+  /* -- marble: the Roman copies ------------------------------------------- */
+  --marble:      #E7E2D4;
+  --marble-dim:  #A9A594;
+  --marble-faint:#6F7367;
+
+  /* -- grain: the cornucopia. Value recovered. The one bold colour. -------- */
+  --gold:        #C9A24A;
+  --gold-lift:   #E0BC69;
+  --gold-wash:   rgba(201, 162, 74, 0.13);
+  --gold-line:   rgba(201, 162, 74, 0.32);
+
+  /* -- patina: oxidised bronze. Permitted, verified, safe. ----------------- */
+  --patina:      #7BA08F;
+  --patina-wash: rgba(123, 160, 143, 0.12);
+  --patina-line: rgba(123, 160, 143, 0.30);
+
+  /* -- kiln: Attic red-figure. Refused, blocked, deviating. ---------------- */
+  --kiln:        #BB5639;
+  --kiln-wash:   rgba(187, 86, 57, 0.12);
+  --kiln-line:   rgba(187, 86, 57, 0.32);
+
+  /* -- type --------------------------------------------------------------- */
+  --face-inscription: "Cinzel", "Trajan Pro", Georgia, serif;
+  --face-display: "Cormorant Garamond", "EB Garamond", Georgia, "Times New Roman", serif;
+  --face-body: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --face-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* -- motion: lame coming, winged going ---------------------------------- */
+  --ease-lame:   cubic-bezier(0.16, 0.72, 0.24, 1);
+  --ease-winged: cubic-bezier(0.4, 0, 0.2, 1);
+  --dur-lame:    900ms;
+  --dur-lame-lg: 1400ms;
+  --dur-winged:  170ms;
+
+  /* -- measure ------------------------------------------------------------ */
+  --measure: 34rem;
+  --wide: 68rem;
+  --pad: clamp(1.25rem, 5vw, 3rem);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--soil);
+  color: var(--marble);
+  font-family: var(--face-body);
+  font-size: 16px;
+  line-height: 1.62;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+/* The field itself: furrows in threes, very faint, fixed behind everything.
+   Hesiod is specific about the number — τρίπολος, thrice-ploughed. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      transparent 0 3px,
+      rgba(231, 226, 212, 0.015) 3px 4px,
+      transparent 4px 9px,
+      rgba(231, 226, 212, 0.015) 9px 10px,
+      transparent 10px 15px,
+      rgba(231, 226, 212, 0.015) 15px 16px,
+      transparent 16px 64px
+    ),
+    radial-gradient(120% 70% at 50% -10%, rgba(201, 162, 74, 0.05), transparent 60%);
+}
+
+/* Grain, in both senses of the word. */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 2;
+  opacity: 0.15;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.45'/%3E%3C/svg%3E");
+}
+
+main, header, footer { position: relative; z-index: 3; }
+
+/* -- typography ----------------------------------------------------------- */
+
+h1, h2, h3 { margin: 0; font-weight: 400; text-wrap: balance; }
+
+.inscription {
+  font-family: var(--face-inscription);
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--marble-faint);
+}
+
+.lede {
+  font-family: var(--face-display);
+  font-weight: 300;
+  font-size: clamp(1.3rem, 2.6vw, 1.7rem);
+  line-height: 1.45;
+  color: var(--marble);
+}
+
+p { margin: 0; }
+strong { font-weight: 600; color: var(--marble); }
+
+.mono, .num {
+  font-family: var(--face-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.num { letter-spacing: -0.02em; }
+
+a { color: var(--gold); text-decoration-color: var(--gold-line); text-underline-offset: 3px; }
+a:hover { color: var(--gold-lift); transition: color var(--dur-winged) var(--ease-winged); }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; border-radius: 2px; }
+
+/* -- layout --------------------------------------------------------------- */
+
+.shell { max-width: var(--wide); margin: 0 auto; padding-inline: var(--pad); }
+.column { max-width: var(--measure); }
+
+.band { padding-block: clamp(4.5rem, 11vh, 8rem); }
+.band + .band { border-top: 1px solid var(--line-soft); }
+
+.band-head { display: flex; flex-direction: column; gap: 1.1rem; margin-bottom: 2.75rem; }
+.band-head h2 {
+  font-family: var(--face-display);
+  font-weight: 300;
+  font-size: clamp(2rem, 4.6vw, 3rem);
+  line-height: 1.08;
+}
+.band-head .column { color: var(--marble-dim); }
+
+.prose { display: flex; flex-direction: column; gap: 1.15rem; color: var(--marble-dim); }
+.prose strong { color: var(--marble); }
+
+/* the furrow gauge: a rule that fills as the field is ploughed */
+.gauge { position: fixed; top: 0; left: 0; right: 0; height: 2px; z-index: 40; }
+.gauge i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--gold-line), var(--gold)); }
+
+/* three furrows, as a divider */
+.furrows { display: flex; flex-direction: column; gap: 4px; width: 100%; }
+.furrows span { height: 1px; background: var(--line); transform-origin: left; transform: scaleX(0); }
+.furrows span:nth-child(2) { background: var(--gold-line); }
+.in .furrows span { transform: scaleX(1); transition: transform var(--dur-lame-lg) var(--ease-lame); }
+.in .furrows span:nth-child(2) { transition-delay: 130ms; }
+.in .furrows span:nth-child(3) { transition-delay: 260ms; }
+
+/* -- reveal: everything arrives lame -------------------------------------- */
+.rise { opacity: 0; transform: translateY(18px); }
+.in.rise, .in .rise {
+  opacity: 1;
+  transform: none;
+  transition: opacity var(--dur-lame) var(--ease-lame), transform var(--dur-lame) var(--ease-lame);
+}
+.in .rise:nth-child(2) { transition-delay: 90ms; }
+.in .rise:nth-child(3) { transition-delay: 180ms; }
+.in .rise:nth-child(4) { transition-delay: 270ms; }
+.in .rise:nth-child(5) { transition-delay: 360ms; }
+
+/* ==========================================================================
+   HERO — the blinding, and the lifting of it
+   ========================================================================== */
+
+.hero { position: relative; min-height: 100svh; display: flex; flex-direction: column; justify-content: center; padding-block: 6rem 4rem; overflow: hidden; }
+.hero-grid, .hero-meta { position: relative; z-index: 1; }
+.hero-grid { display: grid; gap: clamp(2.5rem, 6vw, 5rem); grid-template-columns: 1fr; align-items: end; }
+@media (min-width: 62rem) { .hero-grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); } }
+
+/* The grain field. Ploutos is a harvest god before he is a money god — his
+   wealth is counted in grain, and he is drawn holding a cornucopia. So the
+   hero runs the project's own mechanism as weather: grain falls, a gate lies
+   across its path, and each grain is either let through or stopped at the
+   line. The share that passes is not decorative — it is 34.3%, the share of
+   face value the agent actually recovered on the committed run. */
+/* The cascade sits behind the whole document, above the furrows and below
+   the film grain, so it reads as part of the ground rather than an overlay. */
+.field {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0.62;
+}
+
+
+
+.greek {
+  font-family: var(--face-display);
+  font-weight: 300;
+  font-size: 1.5rem;
+  letter-spacing: 0.34em;
+  color: var(--gold);
+  opacity: 0.85;
+}
+
+.wordmark {
+  font-family: var(--face-display);
+  font-weight: 300;
+  font-size: clamp(4.5rem, 15vw, 11rem);
+  line-height: 0.88;
+  letter-spacing: -0.028em;
+  margin-block: 0.5rem 0;
+  position: relative;
+  display: inline-block;
+}
+
+/* Zeus's blindfold. It lifts on load — slowly, because he is lame coming. */
+.wordmark::after {
+  content: "";
+  position: absolute;
+  left: -2%;
+  right: -2%;
+  top: 38%;
+  height: 20%;
+  background: var(--soil);
+  box-shadow: 0 0 0 1px var(--soil), 0 0 24px 10px var(--soil);
+  transform-origin: center;
+  animation: unblind 1900ms var(--ease-lame) 420ms both;
+}
+@keyframes unblind {
+  0%   { transform: scaleY(1) translateY(0); opacity: 1; }
+  60%  { transform: scaleY(1) translateY(-6%); opacity: 1; }
+  100% { transform: scaleY(0.02) translateY(-260%); opacity: 0; }
+}
+
+.hero-sight { display: flex; flex-direction: column; gap: 1.4rem; animation: sight 2000ms var(--ease-lame) both; }
+@keyframes sight {
+  from { opacity: 0; filter: blur(9px); transform: translateY(10px); }
+  to   { opacity: 1; filter: blur(0); transform: none; }
+}
+
+.hero-claim { max-width: 30rem; color: var(--marble-dim); font-size: 1.0625rem; }
+.hero-claim strong { color: var(--marble); }
+
+.epigraph {
+  border-left: 1px solid var(--gold-line);
+  padding-left: 1.4rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+.epigraph q {
+  font-family: var(--face-display);
+  font-style: italic;
+  font-weight: 300;
+  font-size: 1.3rem;
+  line-height: 1.44;
+  color: var(--marble);
+  quotes: none;
+}
+.epigraph cite { font-style: normal; font-size: 0.75rem; letter-spacing: 0.09em; text-transform: uppercase; color: var(--marble-faint); }
+
+.hero-meta { display: flex; flex-wrap: wrap; gap: 0.55rem 1.75rem; margin-top: 3.5rem; padding-top: 1.5rem; border-top: 1px solid var(--line-soft); font-size: 0.75rem; color: var(--marble-faint); }
+.hero-meta b { font-weight: 500; color: var(--marble-dim); }
+
+/* ==========================================================================
+   FIGURES — statistic tiles
+   ========================================================================== */
+
+.tiles { display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr)); }
+.tile { background: var(--soil-1); padding: 1.5rem 1.4rem; display: flex; flex-direction: column; gap: 0.4rem; }
+.tile dt { font-size: 0.7rem; letter-spacing: 0.11em; text-transform: uppercase; color: var(--marble-faint); }
+.tile dd { margin: 0; font-family: var(--face-mono); font-variant-numeric: tabular-nums; font-size: clamp(1.4rem, 3.2vw, 1.85rem); letter-spacing: -0.03em; color: var(--marble); }
+.tile dd.is-gold { color: var(--gold); }
+.tile dd.is-kiln { color: var(--kiln); }
+.tile dd.is-patina { color: var(--patina); }
+.tile .foot { font-size: 0.75rem; color: var(--marble-faint); line-height: 1.45; }
+
+/* ==========================================================================
+   THE GATE — the centrepiece
+   ========================================================================== */
+
+.gate { display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line); grid-template-columns: 1fr; }
+@media (min-width: 60rem) { .gate { grid-template-columns: minmax(0, 1fr) minmax(0, 20rem); } }
+
+.gate-main { background: var(--soil-1); padding: clamp(1.25rem, 3vw, 2rem); }
+.gate-side { background: var(--soil-1); padding: clamp(1.25rem, 3vw, 1.75rem); display: flex; flex-direction: column; gap: 1.5rem; }
+
+.gate-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--line-soft); margin-bottom: 1.5rem; }
+.gate-step { font-family: var(--face-mono); font-size: 0.78rem; color: var(--marble-dim); }
+.gate-step b { color: var(--gold); font-weight: 500; }
+.gate-clock { font-family: var(--face-mono); font-size: 0.78rem; color: var(--marble-faint); margin-left: auto; }
+
+.btn {
+  font-family: var(--face-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--marble-dim);
+  background: var(--soil-2);
+  border: 1px solid var(--line);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+  transition: color var(--dur-winged) var(--ease-winged), border-color var(--dur-winged) var(--ease-winged), background var(--dur-winged) var(--ease-winged);
+}
+.btn:hover:not(:disabled) { color: var(--marble); border-color: var(--gold-line); background: var(--soil-3); }
+.btn:disabled { opacity: 0.32; cursor: not-allowed; }
+.btn.is-on { color: var(--gold); border-color: var(--gold-line); }
+
+/* the ladder. Rungs are real: the action vocabulary is ordered by escalation
+   and LADDER_MONOTONIC forbids skipping more than one. */
+.ladder { display: flex; flex-direction: column; gap: 1px; background: var(--line-soft); border-top: 1px solid var(--line-soft); border-bottom: 1px solid var(--line-soft); }
+
+.rung {
+  display: grid;
+  grid-template-columns: 2.5rem minmax(0, 1fr);
+  align-items: baseline;
+  gap: 0 0.9rem;
+  padding: 0.6rem 0.75rem;
+  background: var(--soil-1);
+  border-left: 2px solid transparent;
+  transition: background var(--dur-lame) var(--ease-lame), border-color var(--dur-lame) var(--ease-lame), opacity var(--dur-lame) var(--ease-lame);
+}
+.rung-n { font-family: var(--face-mono); font-size: 0.7rem; color: var(--marble-faint); }
+.rung-name { font-family: var(--face-mono); font-size: 0.86rem; color: var(--marble-dim); transition: color var(--dur-lame) var(--ease-lame); }
+.rung-why { grid-column: 2; font-size: 0.74rem; line-height: 1.5; color: var(--marble-faint); margin-top: 0.15rem; }
+.rung-why b { font-weight: 500; }
+
+/* refused: struck out, stamped with the clause that refused it */
+.rung.is-refused { opacity: 0.62; }
+.rung.is-refused .rung-name { color: var(--marble-faint); text-decoration: line-through; text-decoration-color: var(--kiln-line); text-decoration-thickness: 1px; }
+.rung.is-refused .rung-why b { color: var(--kiln); }
+
+/* permitted: the set the model is allowed to see */
+.rung.is-permitted { background: var(--soil-2); border-left-color: var(--patina-line); }
+.rung.is-permitted .rung-name { color: var(--marble); }
+.rung.is-permitted .rung-why b { color: var(--patina); }
+
+/* chosen: what it picked out of that set */
+.rung.is-chosen { background: var(--gold-wash); border-left-color: var(--gold); }
+.rung.is-chosen .rung-name { color: var(--gold-lift); }
+
+.rung-tag { font-family: var(--face-mono); font-size: 0.62rem; letter-spacing: 0.06em; padding: 0.1rem 0.4rem; border: 1px solid currentColor; margin-left: 0.5rem; vertical-align: 1px; }
+.rung.is-chosen .rung-tag { color: var(--gold); }
+
+.gate-verdict { display: flex; flex-direction: column; gap: 0.5rem; }
+.gate-verdict h4 { margin: 0; font-size: 0.7rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--marble-faint); font-weight: 500; }
+.gate-verdict p { font-size: 0.86rem; line-height: 1.6; color: var(--marble-dim); }
+.gate-said { font-family: var(--face-display); font-style: italic; font-weight: 300; font-size: 1.05rem; line-height: 1.5; color: var(--marble); }
+.gate-hash { font-family: var(--face-mono); font-size: 0.66rem; color: var(--marble-faint); word-break: break-all; line-height: 1.6; }
+.gate-hash b { color: var(--patina); font-weight: 400; }
+
+.tally { display: flex; gap: 1.25rem; flex-wrap: wrap; }
+.tally div { display: flex; flex-direction: column; gap: 0.15rem; }
+.tally dt { font-size: 0.66rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--marble-faint); }
+.tally dd { margin: 0; font-family: var(--face-mono); font-size: 1.15rem; }
+.tally .n-permitted { color: var(--patina); }
+.tally .n-refused { color: var(--kiln); }
+
+/* ==========================================================================
+   LEDGER — the results table
+   ========================================================================== */
+
+.scroller { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 0.83rem; min-width: 46rem; }
+thead th {
+  text-align: right;
+  font-weight: 500;
+  font-size: 0.66rem;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+  color: var(--marble-faint);
+  padding: 0 0.7rem 0.75rem;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+thead th:first-child { text-align: left; }
+tbody td { padding: 0.72rem 0.7rem; border-bottom: 1px solid var(--line-soft); text-align: right; font-family: var(--face-mono); font-variant-numeric: tabular-nums; color: var(--marble-dim); white-space: nowrap; }
+tbody td:first-child { text-align: left; font-family: var(--face-body); color: var(--marble); }
+tbody tr.is-subject td { color: var(--marble); }
+tbody tr.is-subject td:first-child { color: var(--gold); font-weight: 500; }
+tbody tr.is-ceiling td { color: var(--marble-faint); }
+tbody tr.is-ceiling td:first-child { color: var(--marble-dim); font-style: italic; }
+.cell-money { color: var(--marble) !important; }
+tbody tr.is-subject .cell-money { color: var(--gold) !important; }
+
+/* the share-of-ceiling bar, drawn into the cell it describes */
+.bar { position: relative; display: block; min-width: 5.5rem; }
+.bar i { position: absolute; left: 0; bottom: -0.34rem; height: 2px; width: 0; background: var(--gold-line); transition: width var(--dur-lame-lg) var(--ease-lame); }
+tr.is-subject .bar i { background: var(--gold); }
+tr.is-ceiling .bar i { background: var(--line); }
+
+.clean { color: var(--patina); font-size: 0.75rem; letter-spacing: 0.06em; }
+
+/* ==========================================================================
+   THE COIN FLIP — paired comparison
+   ========================================================================== */
+
+.verdict-card { border: 1px solid var(--kiln-line); background: linear-gradient(180deg, var(--kiln-wash), transparent 60%); padding: clamp(1.4rem, 3vw, 2rem); display: flex; flex-direction: column; gap: 1.25rem; }
+.verdict-card h3 { font-family: var(--face-display); font-weight: 300; font-size: clamp(1.6rem, 3.6vw, 2.2rem); line-height: 1.14; }
+.verdict-card p { color: var(--marble-dim); font-size: 0.95rem; }
+
+figure { margin: 0; display: flex; flex-direction: column; gap: 0.9rem; }
+figcaption { font-size: 0.78rem; line-height: 1.55; color: var(--marble-faint); max-width: 42rem; }
+figure svg { width: 100%; height: auto; display: block; }
+
+/* ==========================================================================
+   REGISTRY — verification status
+   ========================================================================== */
+
+.registry { display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr)); }
+.rule { background: var(--soil-1); padding: 1rem 1.05rem; display: flex; flex-direction: column; gap: 0.45rem; transition: background var(--dur-winged) var(--ease-winged); }
+.rule:hover { background: var(--soil-2); }
+.rule-id { font-family: var(--face-mono); font-size: 0.76rem; color: var(--marble); }
+.rule-sum { font-size: 0.76rem; line-height: 1.5; color: var(--marble-faint); }
+.pip { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.62rem; letter-spacing: 0.11em; text-transform: uppercase; }
+.pip::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+.pip.verified { color: var(--patina); }
+.pip.analogous { color: var(--gold); }
+.pip.unverified { color: var(--marble-faint); }
+
+.deviation { border: 1px solid var(--kiln-line); background: var(--kiln-wash); padding: 1.25rem 1.4rem; display: flex; flex-direction: column; gap: 0.6rem; }
+.deviation h4 { margin: 0; font-size: 0.7rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--kiln); font-weight: 500; }
+.deviation p { font-size: 0.88rem; line-height: 1.6; color: var(--marble-dim); }
+
+/* ==========================================================================
+   COLOPHON
+   ========================================================================== */
+
+footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-block: clamp(3.5rem, 8vh, 5.5rem); }
+.colophon { display: grid; gap: 2rem clamp(2rem, 5vw, 4rem); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
+.colophon section { display: flex; flex-direction: column; gap: 0.55rem; }
+.colophon h4 { margin: 0; font-family: var(--face-inscription); font-size: 0.66rem; font-weight: 600; letter-spacing: 0.2em; text-transform: uppercase; color: var(--marble-faint); }
+.colophon p { font-size: 0.8rem; line-height: 1.62; color: var(--marble-dim); }
+.colophon .mono { font-size: 0.74rem; color: var(--marble-faint); }
+
+.sign { margin-top: 3rem; padding-top: 1.75rem; border-top: 1px solid var(--line-soft); display: flex; flex-wrap: wrap; gap: 0.75rem 2rem; align-items: baseline; font-size: 0.75rem; color: var(--marble-faint); }
+
+/* ==========================================================================
+   MOTION OFF
+   ========================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 1ms !important;
+    transition-delay: 0ms !important;
+  }
+  .rise { opacity: 1; transform: none; }
+  .furrows span { transform: scaleX(1); }
+  .wordmark::after { display: none; }
+}
+</style>
+<script id="ploutos-data" type="application/json">{"run":{"nCases":500,"seed":42,"mix":"mix_a","atRisk":170709223,"ceiling":91399417,"hardValue":26885639,"softValue":143823584},"policies":[{"policy":"do-nothing","recovered":0,"net":0,"ofFace":0,"ofCeiling":0,"cases":0,"attempts":500,"contacts":0,"notices":0,"escalated":0,"gateRejections":0,"harmEvents":0,"clean":true,"ciLow":0,"ciHigh":0,"stopsByRule":{"STOP_ON_INVOICE_AGE":427,"STOP_ON_HARD_DECLINE":67,"STOP_ON_DISPUTE":6}},{"policy":"naive-retry","recovered":11333600,"net":11243044,"ofFace":0.06639125760650905,"ofCeiling":0.12400079094596413,"cases":114,"attempts":1264,"contacts":0,"notices":268,"escalated":0,"gateRejections":0,"harmEvents":0,"clean":true,"ciLow":7319500,"ciHigh":16016900,"stopsByRule":{"STOP_ON_ATTEMPTS_EXHAUSTED":240,"RECOVERED":114,"STOP_ON_INVOICE_AGE":71,"STOP_ON_SETTLED":2,"STOP_ON_HARD_DECLINE":67,"STOP_ON_DISPUTE":6}},{"policy":"static-policy","recovered":59609190,"net":58840777,"ofFace":0.34918552701748284,"ofCeiling":0.6521834816517484,"cases":185,"attempts":1215,"contacts":436,"notices":268,"escalated":28,"gateRejections":0,"harmEvents":0,"clean":true,"ciLow":42953385,"ciHigh":78345637,"stopsByRule":{"STOP_ON_ATTEMPTS_EXHAUSTED":195,"RECOVERED":185,"STOP_ON_SETTLED":2,"HANDOFF":28,"STOP_ON_INVOICE_AGE":17,"STOP_ON_HARD_DECLINE":67,"STOP_ON_DISPUTE":6}},{"policy":"agent","recovered":58564472,"net":56952756,"ofFace":0.3430656584969636,"ofCeiling":0.6407532336885694,"cases":204,"attempts":1081,"contacts":732,"notices":285,"escalated":99,"gateRejections":0,"harmEvents":0,"clean":true,"ciLow":41986972,"ciHigh":76145372,"stopsByRule":{"STOP_ON_ATTEMPTS_EXHAUSTED":122,"RECOVERED":204,"HANDOFF":99,"STOP_ON_SETTLED":2,"STOP_ON_HARD_DECLINE":67,"STOP_ON_DISPUTE":6}},{"policy":"oracle","recovered":91399417,"net":90540769,"ofFace":0.535409952630386,"ofCeiling":1,"cases":273,"attempts":994,"contacts":411,"notices":235,"escalated":28,"gateRejections":0,"harmEvents":0,"clean":true,"ciLow":69690575,"ciHigh":114689151,"stopsByRule":{"STOP_ON_ATTEMPTS_EXHAUSTED":109,"RECOVERED":273,"STOP_ON_SETTLED":1,"HANDOFF":28,"STOP_ON_HARD_DECLINE":67,"STOP_ON_INVOICE_AGE":16,"STOP_ON_DISPUTE":6}}],"paired":{"grossDelta":-1044718,"netDelta":-1888021,"differingValue":89,"differingOutcome":152,"grossCiLow":-18763135,"grossCiHigh":16998279,"netCiLow":-19676526,"netCiHigh":16072457,"behindShare":0.547,"deltas":[{"id":"CASE-00020","delta":2499900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00321","delta":2499900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00484","delta":2499900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00051","delta":1694155,"code":"AFA_REQUIRED"},{"id":"CASE-00011","delta":1504372,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00183","delta":1499900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00195","delta":1499900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00296","delta":1499900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00297","delta":1499900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00355","delta":1499900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00481","delta":1499900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00326","delta":999900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00111","delta":299900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00202","delta":299900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00390","delta":299900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00033","delta":199900,"code":"RISK_HOLD"},{"id":"CASE-00224","delta":199900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00363","delta":199900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00457","delta":199900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00279","delta":149900,"code":"RISK_HOLD"},{"id":"CASE-00437","delta":149900,"code":"ISSUER_UNAVAILABLE"},{"id":"CASE-00053","delta":99900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00072","delta":99900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00091","delta":79900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00238","delta":79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00264","delta":79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00385","delta":79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00435","delta":79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00098","delta":59900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00119","delta":59900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00248","delta":59900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00269","delta":59900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00371","delta":59900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00438","delta":59900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00095","delta":49900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00450","delta":49900,"code":"RISK_HOLD"},{"id":"CASE-00406","delta":39900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00277","delta":29900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00012","delta":24900,"code":"ISSUER_UNAVAILABLE"},{"id":"CASE-00100","delta":24900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00184","delta":24900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00287","delta":24900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00253","delta":19900,"code":"MANDATE_CAP_EXCEEDED"},{"id":"CASE-00322","delta":19900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00430","delta":19900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00003","delta":14900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00151","delta":14900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00199","delta":14900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00367","delta":14900,"code":"ISSUER_UNAVAILABLE"},{"id":"CASE-00400","delta":14900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00418","delta":14900,"code":"LIMIT_EXCEEDED"},{"id":"CASE-00036","delta":9900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00145","delta":9900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00391","delta":9900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00215","delta":-9900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00306","delta":-9900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00094","delta":-14900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00357","delta":-14900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00172","delta":-24900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00499","delta":-24900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00289","delta":-29900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00476","delta":-29900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00422","delta":-39900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00126","delta":-49900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00226","delta":-49900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00472","delta":-49900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00121","delta":-59900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00156","delta":-59900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00010","delta":-79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00353","delta":-79900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00366","delta":-79900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00155","delta":-99900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00410","delta":-149900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00073","delta":-199900,"code":"INSTRUMENT_EXPIRED"},{"id":"CASE-00104","delta":-199900,"code":"ISSUER_UNAVAILABLE"},{"id":"CASE-00495","delta":-749900,"code":"INSUFFICIENT_FUNDS"},{"id":"CASE-00407","delta":-1540377,"code":"AFA_REQUIRED"},{"id":"CASE-00069","delta":-1599936,"code":"AFA_REQUIRED"},{"id":"CASE-00397","delta":-1631818,"code":"AFA_REQUIRED"},{"id":"CASE-00316","delta":-1655541,"code":"AFA_REQUIRED"},{"id":"CASE-00030","delta":-1719924,"code":"AFA_REQUIRED"},{"id":"CASE-00364","delta":-1746832,"code":"AFA_REQUIRED"},{"id":"CASE-00115","delta":-1780628,"code":"AFA_REQUIRED"},{"id":"CASE-00124","delta":-1783396,"code":"AFA_REQUIRED"},{"id":"CASE-00417","delta":-1830114,"code":"AFA_REQUIRED"},{"id":"CASE-00220","delta":-1886979,"code":"AFA_REQUIRED"},{"id":"CASE-00075","delta":-1927887,"code":"AFA_REQUIRED"},{"id":"CASE-00005","delta":-1936913,"code":"AFA_REQUIRED"},{"id":"CASE-00099","delta":-1999900,"code":"INSUFFICIENT_FUNDS"}]},"gate":{"case":{"case_id":"CASE-00005","status":"escalated","at_risk_paise":1936913,"recovered_paise":0,"cost_paise":15055,"attempts":1,"contacts":3,"notices":0,"double_charge_attempts":0,"gate_rejections":0,"stalled_steps":0,"harm_events":0,"fallbacks":0,"stopped_reason":"HANDOFF: The transaction required Additional Factor of Authentication (AFA), which the payer did not complete despite 3 nudges, and the mandate has now expired.","recovered_at":null,"days_to_recovery":null,"first_code":"AFA_REQUIRED","first_code_hard":false,"adversarial":"mandate_expiring","settled_out_of_band":false},"steps":[{"seq":2,"ts":"2026-08-05T09:00:00.000Z","obsHash":"ba6cffee8e5a983543b636d56254c5dd","hash":"75244e33d136aece8338c380451bf557c316681ce554a958e25b28f23e20b1a5","prevHash":"a5b1e106ca3caf9c73b6045bd45bf972cea9751d34e8c24abe136c3bfb3e46fd","permitted":["wait","serve_predebit_notice","request_afa","notify_soft","request_instrument_update","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"retry_debit","rule":"AFA_THRESHOLD","detail":"1936913 is at or above the 1500000 threshold and is not authenticated","channel":null},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"send_payment_link","rule":"LADDER_MONOTONIC","detail":"rung 3 is more than 2 above the current rung 0","channel":null},{"action":"capture_promise_to_pay","rule":"LADDER_MONOTONIC","detail":"rung 4 is more than 2 above the current rung 0","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"request_afa","channel":"whatsapp","language":"hinglish"},"diagnosis":"The transaction exceeds the RBI mandate limit of ₹15,000 for frictionless recurring card debits and failed due to AFA_REQUIRED.","rationale":"Invoice amount is over ₹15,000, requiring explicit customer step-up authentication (OTP/AFA) via WhatsApp before the debit can be executed."},{"seq":4,"ts":"2026-08-05T21:00:00.000Z","obsHash":"f711f824dd17beb200565b78643974b1","hash":"ae890a2dd3c9c9d3f307e06a8e1280474792d2d234118eb611c5bf96952b9689","prevHash":"a8bb15b3dc4577b4452fb248dce472c41df802327411f5141bb68ef3c09ab5bc","permitted":["wait","retry_debit","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-05T21:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"sms"},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-05T21:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"whatsapp"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-05T21:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"inapp"},{"action":"serve_predebit_notice","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_afa","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_instrument_update","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"send_payment_link","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"capture_promise_to_pay","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"wait","until":"2026-08-06T04:00:00.000Z"},"diagnosis":"The transaction failed because Additional Factor of Authentication (AFA) is required, and an AFA request has already been sent.","rationale":"It is currently outside contact hours (02:30 IST). We must wait until daytime contact hours resume at 09:00 IST to allow the payer to complete authentication or evaluate follow-up."},{"seq":6,"ts":"2026-08-06T04:00:00.000Z","obsHash":"48fe9c516fb48608244ad2729238d280","hash":"a42b390b80ab53691103f4d0d3b694e2b4614297621a94cf674375f63ddd710b","prevHash":"0a89289dc8aa220876061bf194f42cd431707f6877ea0aa8773032bc28d2c723","permitted":["wait","serve_predebit_notice","request_afa","retry_debit","notify_soft","request_instrument_update","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"notify_soft","rule":"CONTACT_CHANNEL_RATE","detail":"1 whatsapp message(s) in the last 24h","channel":"whatsapp"},{"action":"send_payment_link","rule":"LADDER_MONOTONIC","detail":"rung 3 is more than 2 above the current rung 0","channel":null},{"action":"capture_promise_to_pay","rule":"LADDER_MONOTONIC","detail":"rung 4 is more than 2 above the current rung 0","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"wait","until":"2026-08-06T10:00:00.000Z"},"diagnosis":"The transaction failed due to AFA_REQUIRED on card-on-file, and an AFA request was already sent via WhatsApp yesterday. The mandate expires on 07/08, so waiting for the customer to complete AFA before retrying or escalating is appropriate.","rationale":"An AFA notification was already dispatched yesterday afternoon. Waiting 6 hours allows the customer time to authenticate the transaction before attempting additional follow-ups."},{"seq":8,"ts":"2026-08-06T10:00:00.000Z","obsHash":"694ceee98622a4ed1274500106ea5dc9","hash":"3ecc3e8211acf9f5e102e65868e75c17dfd3f4ba0610626122858f5c046d8d2d","prevHash":"3a0fc2b454ea446d368d94559b6c0b8c9eb999618042c324b0076e89cc7e2f39","permitted":["wait","serve_predebit_notice","request_afa","retry_debit","notify_soft","request_instrument_update","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"send_payment_link","rule":"LADDER_MONOTONIC","detail":"rung 3 is more than 2 above the current rung 0","channel":null},{"action":"capture_promise_to_pay","rule":"LADDER_MONOTONIC","detail":"rung 4 is more than 2 above the current rung 0","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"request_afa","channel":"sms","language":"hinglish"},"diagnosis":"The recurring card-on-file charge failed due to RBI mandate guidelines requiring Additional Factor of Authentication (AFA) for transactions above threshold or risk triggers. An AFA request was sent via WhatsApp yesterday but has not yet been approved.","rationale":"The initial WhatsApp request sent 25 hours ago remains unauthenticated. Sending a follow-up AFA request via SMS ensures reaching the payer on an alternative channel before the mandate expires tomorrow."},{"seq":10,"ts":"2026-08-06T22:00:00.000Z","obsHash":"ac028de4196c9e618da0213ba13a37e1","hash":"95274211544f9b52d8859bc30221562e341fa164d8773d83df43ec146ae733f2","prevHash":"2a8b37a135a728230556723d53a10b3976d52fafd12c14fb2ae1b7bcc8ff2004","permitted":["wait","retry_debit","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-06T22:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"sms"},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-06T22:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"whatsapp"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-06T22:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"inapp"},{"action":"serve_predebit_notice","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_afa","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_instrument_update","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"send_payment_link","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"capture_promise_to_pay","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"wait","until":"2026-08-07T04:00:00.000Z"},"diagnosis":"Recurring debit failed because Additional Factor of Authentication (AFA) is required, but contact channels are currently closed due to nighttime contact hour restrictions.","rationale":"It is currently 03:30 IST and contact hours reopen at 09:00 IST. Waiting 6 hours allows the window to open so an AFA request or notification can be dispatched."},{"seq":12,"ts":"2026-08-07T04:00:00.000Z","obsHash":"75fb5c6fe4fc358503167fd8c6927e0c","hash":"91f5f63711ed0d018dacd5f36f7d091a568bbac2874e79ef1ae91fe664887fc4","prevHash":"89005080eca6f2446461987dac3de9f963c6b519b3035a25880926c1c8319951","permitted":["wait","serve_predebit_notice","request_afa","retry_debit","notify_soft","request_instrument_update","switch_rail","handoff_human","stop_terminal"],"excluded":[{"action":"notify_soft","rule":"CONTACT_CHANNEL_RATE","detail":"1 sms message(s) in the last 24h","channel":"sms"},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"send_payment_link","rule":"LADDER_MONOTONIC","detail":"rung 3 is more than 2 above the current rung 0","channel":null},{"action":"capture_promise_to_pay","rule":"LADDER_MONOTONIC","detail":"rung 4 is more than 2 above the current rung 0","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"request_afa","channel":"inapp","language":"hinglish"},"diagnosis":"The recurring card debit requires Additional Factor of Authentication (AFA) from the payer, which has not yet been completed despite previous nudges.","rationale":"The mandate expires today and requires AFA approval; reaching the customer via in-app notification provides an immediate direct authentication path without repeating SMS/WhatsApp fatigue."},{"seq":14,"ts":"2026-08-07T16:00:00.000Z","obsHash":"c6e2f3edb99842fd920300e66dabdb90","hash":"82c4f152cb263c63d3d3fda5e1ea7db58f7fab9afbdc9d403dd5ec6001548426","prevHash":"04faf2b9e5bf815d1e76921a0341bede682864065dd8314eb9f0f8cd01a1cfb0","permitted":["wait","handoff_human","stop_terminal"],"excluded":[{"action":"retry_debit","rule":"MANDATE_VALIDITY_WINDOW","detail":"mandate valid_till 2026-08-07T08:00:00.000Z has passed","channel":null},{"action":"switch_rail","rule":"MANDATE_VALIDITY_WINDOW","detail":"mandate valid_till 2026-08-07T08:00:00.000Z has passed","channel":null},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-07T16:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"sms"},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"payer has not consented to email","channel":"email"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-07T16:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"whatsapp"},{"action":"notify_soft","rule":"CONTACT_HOURS","detail":"2026-08-07T16:00:00.000Z is outside 9:00-19:00 Asia/Kolkata","channel":"inapp"},{"action":"serve_predebit_notice","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_afa","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"notify_soft","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"request_instrument_update","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"send_payment_link","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"capture_promise_to_pay","rule":"CONSENT_REQUIRED","detail":"no channel is usable for this payer right now","channel":null},{"action":"grant_grace","rule":"LADDER_MONOTONIC","detail":"rung 5 is more than 2 above the current rung 0","channel":null}],"chose":{"type":"handoff_human","reason":"The transaction required Additional Factor of Authentication (AFA), which the payer did not complete despite 3 nudges, and the mandate has now expired.","case_summary":"Invoice INV-00005 (1936913 paise) on card_on_file, 1 presentment(s). Automated retries are blocked because the mandate expired, and with a high lifetime value (₹2.71L), a human agent should intervene to assist with mandate renewal or alternative settlement.","priority":"high"},"diagnosis":"The transaction required Additional Factor of Authentication (AFA), which the payer did not complete despite 3 nudges, and the mandate has now expired.","rationale":"Automated retries are blocked because the mandate expired, and with a high lifetime value (₹2.71L), a human agent should intervene to assist with mandate renewal or alternative settlement."}]},"rules":[{"id":"MANDATE_ACTIVE_REQUIRED","kind":"eligibility","severity":"critical","harm":true,"summary":"No debit may be presented unless the mandate is active.","status":"verified","source":null},{"id":"MANDATE_VALIDITY_WINDOW","kind":"eligibility","severity":"critical","harm":true,"summary":"A debit may not be scheduled for a time after the mandate valid_till.","status":"verified","source":null},{"id":"MANDATE_CAP_RESPECTED","kind":"eligibility","severity":"critical","harm":true,"summary":"Debit amount must not exceed the mandate authorised maximum.","status":"verified","source":null},{"id":"PREDEBIT_NOTICE","kind":"compliance","severity":"high","harm":true,"summary":"An e-mandate debit requires advance notice served at least N hours before presentment.","status":"verified","source":"https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13374"},{"id":"AFA_THRESHOLD","kind":"compliance","severity":"high","harm":true,"summary":"Debits at or above the threshold need per-debit authentication and cannot be auto-presented.","status":"verified","source":"https://www.rbi.org.in/Scripts/BS_ViewMasDirections.aspx?id=13374"},{"id":"RETRY_CAP_PER_INVOICE","kind":"rate_limit","severity":"high","harm":false,"summary":"Maximum debit presentments per invoice, per rail.","status":"unverified","source":null},{"id":"RETRY_MIN_GAP","kind":"rate_limit","severity":"high","harm":false,"summary":"Minimum gap between presentments, read from the failure code min_retry_gap_hours.","status":"unverified","source":null},{"id":"RISK_COOLOFF","kind":"rate_limit","severity":"high","harm":false,"summary":"After a risk or velocity hold, no presentment for the cooling-off window.","status":"unverified","source":null},{"id":"CONTACT_HOURS","kind":"compliance","severity":"critical","harm":true,"summary":"Outbound contact only between the permitted local hours.","status":"analogous","source":"https://www.rbi.org.in/scripts/NotificationUser.aspx?Id=12378&Mode=0"},{"id":"CONTACT_CHANNEL_RATE","kind":"rate_limit","severity":"high","harm":true,"summary":"At most one outbound message per channel per rolling window.","status":"unverified","source":null},{"id":"CONTACT_LIFETIME_CAP","kind":"rate_limit","severity":"high","harm":true,"summary":"At most N outbound contacts across the whole life of one invoice.","status":"unverified","source":null},{"id":"CONSENT_REQUIRED","kind":"compliance","severity":"critical","harm":true,"summary":"A channel may be used only where the customer has recorded consent for it.","status":"verified","source":null},{"id":"DND_SUPPRESSION","kind":"compliance","severity":"critical","harm":true,"summary":"A channel flagged do-not-disturb is suppressed for collection messaging.","status":"analogous","source":"https://www.trai.gov.in/faqcategory/unsolicited-commercial-communicationsucc"},{"id":"STOP_ON_SETTLED","kind":"stop","severity":"critical","harm":true,"summary":"Halt immediately once the invoice is settled by any means, including payment made outside our flow. A presentment after settlement is a double charge and is the worst outcome this system can produce.","status":"verified","source":null},{"id":"STOP_ON_HARD_DECLINE","kind":"stop","severity":"critical","harm":true,"summary":"Halt presentments on any failure code of class hard.","status":"verified","source":null},{"id":"STOP_ON_DISPUTE","kind":"stop","severity":"critical","harm":true,"summary":"Halt all collection activity except human handoff once a dispute is asserted.","status":"verified","source":null},{"id":"STOP_ON_CANCELLATION","kind":"stop","severity":"critical","harm":true,"summary":"Halt at the point a customer cancellation request is received.","status":"verified","source":null},{"id":"STOP_ON_INVOICE_AGE","kind":"stop","severity":"medium","harm":false,"summary":"Stop the recovery loop once the invoice passes the age limit; hand off or write off.","status":"unverified","source":null},{"id":"STOP_ON_ATTEMPTS_EXHAUSTED","kind":"stop","severity":"medium","harm":false,"summary":"Stop once the retry cap or the contact cap is exhausted.","status":"verified","source":null},{"id":"IDEMPOTENT_ATTEMPT","kind":"eligibility","severity":"critical","harm":true,"summary":"A duplicate failure event for an already-recorded attempt must not produce a second action.","status":"verified","source":null},{"id":"LADDER_MONOTONIC","kind":"eligibility","severity":"medium","harm":false,"summary":"The ladder may advance at most one rung past the highest rung reached, and never descends after a stop condition has fired.","status":"verified","source":null},{"id":"P2P_SINGLE","kind":"rate_limit","severity":"medium","harm":false,"summary":"At most one promise-to-pay per invoice. A broken promise forces escalation to human handoff rather than another promise.","status":"verified","source":null},{"id":"NO_REFUND","kind":"authority","severity":"critical","harm":true,"summary":"The agent may never initiate a refund or reversal.","status":"verified","source":null},{"id":"NO_MANDATE_INCREASE","kind":"authority","severity":"critical","harm":true,"summary":"The agent may never raise a mandate cap. Amendment is a customer re-authorisation and always leaves the agent authority.","status":"verified","source":null},{"id":"NO_DISCOUNT","kind":"authority","severity":"critical","harm":true,"summary":"The agent may never offer a price reduction or write-down to secure payment.","status":"verified","source":null},{"id":"GRACE_CAP","kind":"authority","severity":"high","harm":false,"summary":"The agent may grant at most one grace period, of at most one billing cycle.","status":"verified","source":null},{"id":"NO_VOICE","kind":"authority","severity":"high","harm":true,"summary":"The agent may not place voice calls. Out of scope for v1 by deliberate choice.","status":"verified","source":null},{"id":"NO_THIRD_PARTY_CONTACT","kind":"authority","severity":"critical","harm":true,"summary":"The agent may contact only the payer, never an employer, relative or reference.","status":"verified","source":null}],"codes":[{"code":"INSUFFICIENT_FUNDS","label":"Insufficient funds","cls":"soft","retryable":true,"gapHours":24,"remedy":"retime"},{"code":"ISSUER_UNAVAILABLE","label":"Issuer or bank unavailable","cls":"soft","retryable":true,"gapHours":6,"remedy":"retime"},{"code":"TXN_TIMEOUT","label":"Transaction timeout","cls":"soft","retryable":true,"gapHours":2,"remedy":"retime"},{"code":"LIMIT_EXCEEDED","label":"Daily or per-transaction limit exceeded","cls":"soft","retryable":true,"gapHours":24,"remedy":"retime"},{"code":"RISK_HOLD","label":"Risk or velocity hold","cls":"soft","retryable":true,"gapHours":72,"remedy":"cool_off"},{"code":"INSTRUMENT_EXPIRED","label":"Instrument expired","cls":"soft_action","retryable":false,"gapHours":0,"remedy":"update_instrument"},{"code":"MANDATE_CAP_EXCEEDED","label":"Debit exceeds mandate cap","cls":"soft_action","retryable":false,"gapHours":0,"remedy":"amend_mandate"},{"code":"PREDEBIT_NOTICE_MISSING","label":"Pre-debit notification not served","cls":"soft_compliance","retryable":false,"gapHours":0,"remedy":"serve_notice"},{"code":"AFA_REQUIRED","label":"Additional factor of authentication required","cls":"soft_compliance","retryable":false,"gapHours":0,"remedy":"request_afa"},{"code":"PSP_DOWN","label":"Payer PSP or app unavailable","cls":"soft","retryable":true,"gapHours":12,"remedy":"switch_rail"},{"code":"MANDATE_REVOKED","label":"Mandate revoked by payer","cls":"hard","retryable":false,"gapHours":0,"remedy":"none"},{"code":"MANDATE_EXPIRED","label":"Mandate past its validity date","cls":"hard","retryable":false,"gapHours":0,"remedy":"none"},{"code":"ACCOUNT_CLOSED","label":"Account closed or frozen","cls":"hard","retryable":false,"gapHours":0,"remedy":"none"},{"code":"INSTRUMENT_BLOCKED","label":"Instrument blocked, lost or stolen","cls":"hard","retryable":false,"gapHours":0,"remedy":"none"},{"code":"CUSTOMER_DISPUTE","label":"Payer disputing or has churned","cls":"hard","retryable":false,"gapHours":0,"remedy":"none"}]}</script>
+
+<canvas class="field" id="field" aria-hidden="true"></canvas>
+
+<div class="gauge" aria-hidden="true"><i id="gauge"></i></div>
+
+<header class="hero shell">
+  <div class="hero-grid">
+    <div class="hero-sight">
+      <p class="greek">Πλοῦτος</p>
+      <h1 class="wordmark">Ploutos</h1>
+      <p class="lede">A bounded recovery agent for failed recurring payments on Indian rails.</p>
+      <p class="hero-claim">A deterministic policy engine owns the guardrails. <strong>The model chooses only within the set the engine permits</strong> — and the engine decides when to stop.</p>
+    </div>
+    <div class="hero-sight epigraph" style="animation-delay:700ms">
+      <q>Zeus blinded me, so that I might never tell the good from the bad. And so I go to the worst of them.</q>
+      <cite>Ploutos, in Aristophanes' <i>Wealth</i>, 388 BCE</cite>
+    </div>
+  </div>
+  <div class="hero-meta">
+    <span><b>Razorpay AI Buildathon 2026</b> · Track 03</span>
+    <span><b class="num" data-count="500">0</b> failed invoices</span>
+    <span>batch <b class="mono">mix_a</b> · seed <b class="mono">42</b></span>
+    <span><b class="num" data-count="12738">0</b> recorded decisions</span>
+  </div>
+</header>
+
+<main>
+
+  <!-- ================= 1. THE BLIND GOD ================= -->
+  <section class="band shell" id="problem">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">I · The blind god</p>
+      <h2>Wealth arrives without looking at who it is charging.</h2>
+      <div class="column">Zeus blinded Ploutos so he could not tell the deserving from the undeserving. A recovery system that retries without looking does the same thing, and calls it throughput.</div>
+    </div>
+
+    <div class="prose column rise" style="margin-bottom:3rem">
+      <p>A subscription debit fails. A balance was short on the 3rd, an issuer was down for an hour, a card expired, a mandate was quietly revoked at the bank. Most of that money is recoverable and most of it is never recovered — because recovering it well means deciding <strong>per case</strong> when to re-present, on which rail, whether to say anything at all, and, the part that is usually skipped, when to stop.</p>
+      <p><strong>Stopping is not a detail.</strong> A re-presentment against an invoice the customer has already settled by other means is a double charge. A message to someone who asked to cancel is a complaint. A retry against a revoked mandate is an unauthorised debit attempt. A recovery system that ignores these recovers more money and is worse.</p>
+    </div>
+
+    <dl class="tiles rise" id="tiles"></dl>
+  </section>
+
+  <!-- ================= 2. THE GATE ================= -->
+  <section class="band shell" id="gate">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">II · The gate</p>
+      <h2>Restoring his sight was the whole plot.</h2>
+      <div class="column">In the play, Chremylos cures the god so that wealth can finally tell one person from another. Here the cure is a deterministic gate: it takes the twelve actions that exist, removes the ones no rule permits right now, and hands the model only what is left — each refusal stamped with the clause that caused it.</div>
+    </div>
+
+    <div class="gate rise">
+      <div class="gate-main">
+        <div class="gate-bar">
+          <button class="btn" id="gate-prev" type="button">Back</button>
+          <button class="btn is-on" id="gate-play" type="button">Play</button>
+          <button class="btn" id="gate-next" type="button">Forward</button>
+          <span class="gate-step">step <b id="gate-i">1</b> of <span id="gate-n">7</span></span>
+          <span class="gate-clock" id="gate-clock"></span>
+        </div>
+        <div class="ladder" id="ladder"></div>
+      </div>
+
+      <aside class="gate-side">
+        <div class="gate-verdict">
+          <h4>The case</h4>
+          <p id="gate-case"></p>
+        </div>
+        <dl class="tally">
+          <div><dt>Permitted</dt><dd class="n-permitted" id="n-permitted">0</dd></div>
+          <div><dt>Refused</dt><dd class="n-refused" id="n-refused">0</dd></div>
+          <div><dt>Rejections</dt><dd id="n-rejected">0</dd></div>
+        </dl>
+        <div class="gate-verdict">
+          <h4>What it chose</h4>
+          <p class="gate-said" id="gate-chose"></p>
+        </div>
+        <div class="gate-verdict">
+          <h4>Why it said it chose it</h4>
+          <p id="gate-why"></p>
+        </div>
+        <div class="gate-verdict">
+          <h4>Recorded as</h4>
+          <p class="gate-hash" id="gate-hash"></p>
+        </div>
+      </aside>
+    </div>
+
+    <div class="prose column rise" style="margin-top:3rem">
+      <p><strong>Zero gate rejections across 12,738 decisions.</strong> Not because the model behaved — because the response schema is rebuilt on every call to enumerate only the permitted actions. A forbidden action is undecodable, not discouraged.</p>
+      <p>This is <span class="mono">CASE-00005</span>, the ₹19,369 invoice. <strong>The gate offered a presentment on five of the seven steps.</strong> The agent asked the payer to authenticate instead — WhatsApp, then SMS, then in-app — waited through the rest, and the mandate expired underneath it. It ends in a handoff to a human, and ₹19,369 uncollected.</p>
+      <p>That is the largest open behavioural gap in the project, and it is on this page for the same reason it is in the README: <strong>the trail is what makes it visible.</strong></p>
+    </div>
+  </section>
+
+  <!-- ================= 3. PEACE HOLDS WEALTH ================= -->
+  <section class="band shell" id="architecture">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">III · Peace holds wealth</p>
+      <h2>Kephisodotos carved Prosperity as an infant, held.</h2>
+      <div class="column">Around 375 BCE he set a bronze in the Athenian Agora: Eirene — Peace — standing in a heavy peplos with the child Ploutos on her arm. Wealth as something that cannot yet stand on its own, and needs the thing holding it. That is the architecture.</div>
+    </div>
+
+    <figure class="rise">
+      <svg viewBox="0 0 1000 330" role="img" aria-label="The pipeline: ground truth is converted to an observation, the gate reduces the action vocabulary to a permitted set, the model chooses one action from that set, the runner executes it, and every step is written to a hash-chained ledger. A build-enforced import barrier stops policy, agent and domain code from reaching ground truth." style="color:var(--marble-dim)">
+        <defs>
+          <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,1 L9,5 L0,9 z" fill="currentColor"></path>
+          </marker>
+          <marker id="ar-gold" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,1 L9,5 L0,9 z" fill="#C9A24A"></path>
+          </marker>
+          <marker id="ar-kiln" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0,1 L9,5 L0,9 z" fill="#BB5639"></path>
+          </marker>
+        </defs>
+
+        <!-- the barrier -->
+        <line x1="164" y1="34" x2="164" y2="258" stroke="#BB5639" stroke-width="1" stroke-dasharray="3 5"></line>
+        <text x="172" y="46" font-size="11" fill="#BB5639" font-family="IBM Plex Mono, monospace">import barrier</text>
+        <text x="172" y="61" font-size="10" fill="#BB5639" opacity="0.75" font-family="IBM Plex Mono, monospace">tests/boundary.test.ts fails the build</text>
+
+        <!-- boxes -->
+        <g font-family="IBM Plex Mono, monospace">
+          <rect x="20" y="92" width="122" height="66" fill="none" stroke="currentColor" stroke-width="1"></rect>
+          <text x="81" y="118" font-size="12.5" text-anchor="middle" fill="var(--marble)">world</text>
+          <text x="81" y="136" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.7">ground truth</text>
+
+          <rect x="188" y="92" width="122" height="66" fill="none" stroke="currentColor" stroke-width="1"></rect>
+          <text x="249" y="118" font-size="12.5" text-anchor="middle" fill="var(--marble)">observation</text>
+          <text x="249" y="136" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.7">what is visible</text>
+
+          <rect x="356" y="92" width="122" height="66" fill="none" stroke="#7BA08F" stroke-width="1.5"></rect>
+          <text x="417" y="118" font-size="12.5" text-anchor="middle" fill="#7BA08F">gate</text>
+          <text x="417" y="136" font-size="10.5" text-anchor="middle" fill="#7BA08F" opacity="0.8">28 rules</text>
+
+          <rect x="524" y="92" width="122" height="66" fill="none" stroke="#C9A24A" stroke-width="1.5"></rect>
+          <text x="585" y="118" font-size="12.5" text-anchor="middle" fill="#C9A24A">model</text>
+          <text x="585" y="136" font-size="10.5" text-anchor="middle" fill="#C9A24A" opacity="0.8">chooses only</text>
+
+          <rect x="692" y="92" width="122" height="66" fill="none" stroke="currentColor" stroke-width="1"></rect>
+          <text x="753" y="118" font-size="12.5" text-anchor="middle" fill="var(--marble)">runner</text>
+          <text x="753" y="136" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.7">executes</text>
+
+          <rect x="860" y="92" width="122" height="66" fill="none" stroke="currentColor" stroke-width="1"></rect>
+          <text x="921" y="118" font-size="12.5" text-anchor="middle" fill="var(--marble)">ledger</text>
+          <text x="921" y="136" font-size="10.5" text-anchor="middle" fill="currentColor" opacity="0.7">hash-chained</text>
+        </g>
+
+        <!-- arrows -->
+        <g font-family="IBM Plex Mono, monospace" font-size="10" fill="currentColor">
+          <line x1="142" y1="125" x2="180" y2="125" stroke="currentColor" marker-end="url(#ar)"></line>
+          <text x="161" y="82" text-anchor="middle" opacity="0.75">latent</text>
+
+          <line x1="310" y1="125" x2="348" y2="125" stroke="currentColor" marker-end="url(#ar)"></line>
+          <text x="329" y="82" text-anchor="middle" opacity="0.75">case</text>
+
+          <line x1="478" y1="125" x2="516" y2="125" stroke="#C9A24A" stroke-width="1.5" marker-end="url(#ar-gold)"></line>
+          <text x="497" y="82" text-anchor="middle" fill="#C9A24A">permitted set</text>
+
+          <line x1="646" y1="125" x2="684" y2="125" stroke="#C9A24A" stroke-width="1.5" marker-end="url(#ar-gold)"></line>
+          <text x="665" y="82" text-anchor="middle" fill="#C9A24A">one action</text>
+
+          <line x1="814" y1="125" x2="852" y2="125" stroke="currentColor" marker-end="url(#ar)"></line>
+          <text x="833" y="82" text-anchor="middle" opacity="0.75">every step</text>
+        </g>
+
+        <!-- refusals go to the ledger too, with the rule that caused them -->
+        <path d="M417 158 L417 206 L900 206 L900 166" fill="none" stroke="#BB5639" stroke-width="1" marker-end="url(#ar-kiln)"></path>
+        <text x="640" y="199" font-size="10" text-anchor="middle" fill="#BB5639" font-family="IBM Plex Mono, monospace">every refusal, with the rule_id that refused it</text>
+
+        <!-- the loop back -->
+        <path d="M753 158 L753 258 L249 258 L249 166" fill="none" stroke="currentColor" stroke-width="1" stroke-dasharray="4 4" opacity="0.6" marker-end="url(#ar)"></path>
+        <text x="500" y="275" font-size="10" text-anchor="middle" opacity="0.65" font-family="IBM Plex Mono, monospace">outcome re-observed, and the loop runs again until a stop rule fires</text>
+
+        <text x="20" y="308" font-size="10" fill="#BB5639" font-family="IBM Plex Mono, monospace" opacity="0.85">src/agent, src/policy and src/domain may never import src/world — so the agent cannot reach the answer it is being scored against.</text>
+      </svg>
+      <figcaption>The model sits inside the loop at exactly one point, and the set it draws from has already been narrowed by the engine. It never moves money, never determines eligibility, never evaluates a compliance rule, never decides when to stop, and never computes a metric.</figcaption>
+    </figure>
+
+    <div class="prose column rise" style="margin-top:3rem">
+      <p><strong>Rules are enforced structurally, never prompted.</strong> A test asserts that <span class="mono">CONTACT_HOURS</span>, <span class="mono">DND</span>, <span class="mono">PREDEBIT_NOTICE</span> and <span class="mono">AFA_THRESHOLD</span> never appear in the system prompt. "The model cannot authorise a refund" is a property of the action union — there is no refund action to construct.</p>
+    </div>
+  </section>
+
+  <!-- ================= 4. THE LEDGER ================= -->
+  <section class="band shell" id="results">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">IV · Hoarders and wasters</p>
+      <h2>Dante put Ploutos over the fourth circle, guarding both.</h2>
+      <div class="column">The hoarders who released nothing and the wasters who flung it away, punished in the same ring for the same error in opposite directions. Recovery has the same two failure modes, and they are the two baselines: <strong>do-nothing</strong> recovers ₹0, <strong>naive-retry</strong> burns 1,264 attempts to collect 6.6%.</div>
+    </div>
+
+    <div class="scroller rise">
+      <table id="ledger">
+        <thead>
+          <tr>
+            <th scope="col">policy</th>
+            <th scope="col">recovered</th>
+            <th scope="col">of face</th>
+            <th scope="col">of ceiling</th>
+            <th scope="col">net</th>
+            <th scope="col">cases</th>
+            <th scope="col">attempts</th>
+            <th scope="col">messages</th>
+            <th scope="col">escalated</th>
+            <th scope="col">harm</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+
+    <div class="prose column rise" style="margin-top:2.5rem">
+      <p><strong>The ceiling was derived, not asserted.</strong> ₹9,13,994.17 comes from an oracle that searches ground truth for what was actually achievable on these 500 cases. If any observation-only policy ever beats it, the run <strong>fails</strong> rather than publishing the higher number.</p>
+      <p><strong>Zero harm events, in every row.</strong> No double charge, no contact outside permitted hours, no message to a DND or revoked-mandate payer.</p>
+    </div>
+  </section>
+
+  <!-- ================= 5. THE COIN FLIP ================= -->
+  <section class="band shell" id="honest">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">V · The honest reading</p>
+      <h2>The agent does not beat the rules engine. It ties with it.</h2>
+    </div>
+
+    <div class="verdict-card rise" style="margin-bottom:3rem">
+      <h3>54.7% of resamples put the agent behind. That is a coin flip.</h3>
+      <p>Both policies ran the identical 500 cases, so the comparison is paired. Only <strong>89 of 500</strong> cases ended with different recovered value, and those differences sit in a few dozen high-value invoices — so this batch <strong>cannot resolve a two-percent difference</strong> in recovered value, in either direction. <span class="mono">npm run eval</span> prints that warning itself rather than leaving it to the reader.</p>
+    </div>
+
+    <figure class="rise" style="margin-bottom:3.5rem">
+      <div id="ci-chart"></div>
+      <figcaption>Paired difference, agent minus static policy, with the 95% bootstrap interval over 1,000 resamples. The interval straddles zero by a wide margin in both directions — which is the finding, and it is a null result reported as one.</figcaption>
+    </figure>
+
+    <figure class="rise">
+      <div id="delta-chart"></div>
+      <figcaption>Every one of the 89 cases where the two policies recovered different amounts, sorted by size. Gold is value the agent recovered and the rules engine did not; terracotta is the reverse. The two sides very nearly cancel — that is what a tie looks like at the level of individual invoices.</figcaption>
+    </figure>
+  </section>
+
+  <!-- ================= 6. THE REGISTRY ================= -->
+  <section class="band shell" id="registry">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">VI · Nothing is a mystery</p>
+      <h2>The Eleusinian rite was sealed. This trail is the opposite.</h2>
+      <div class="column">Initiates could not say what they had seen. Here every bound the engine enforces is written down, carries a verification status, and names its primary source or admits it does not have one.</div>
+    </div>
+
+    <div class="registry rise" id="registry-grid" style="margin-bottom:2.5rem"></div>
+
+    <div class="deviation rise" style="margin-bottom:2.5rem">
+      <h4>One known deviation, in the unsafe direction</h4>
+      <p>The E-mandate Framework 2026 requires the 24-hour pre-debit notice for cards. Our <span class="mono">PREDEBIT_NOTICE</span> rule applies it to UPI Autopay and e-NACH only — so a card debit is presented here without one. It is documented rather than quietly fixed, because changing the permitted set invalidates all 12,738 recorded decisions and the budget for a re-run is gone.</p>
+    </div>
+
+    <div class="prose column rise">
+      <p><strong>The audit trail is hash-chained per case and verified before any metric is reported.</strong> A tampered or truncated trail is worse than none, because it still looks credible — so <span class="mono">npm run eval</span> refuses to print numbers derived from one.</p>
+      <p>The phrases "RBI compliant" and "NPCI compliant" appear nowhere in the repository, and a test enforces that. So does a test that no unverified rule claims a regulator requires it.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="shell">
+    <div class="colophon">
+      <section>
+        <h4>The name</h4>
+        <p>Ploutos, son of Demeter and Iasion, born in a thrice-ploughed field in Crete. Hesiod: <em>"him into whose hands he comes, he makes rich."</em> Blinded by Zeus so he could not tell the deserving from the undeserving — which is the failure mode this system is built against.</p>
+      </section>
+      <section>
+        <h4>The motion</h4>
+        <p>Lucian has Ploutos arrive lame — <em>"my legs are like lead"</em> — and leave winged, <em>"swifter than any dream."</em> Everything on this page that arrives uses a 900ms curve; everything that leaves uses 170ms. Two tokens, applied throughout.</p>
+        <p class="mono">--ease-lame · --ease-winged</p>
+      </section>
+      <section>
+        <h4>The cascade</h4>
+        <p>Grain falls behind the whole page, through a stack of gates. Every line it survives it comes out hotter — wheat, gold, amber, deep orange — and every line it fails it is struck out in terracotta and gone.</p>
+        <p>The arithmetic is load-bearing: each gate passes the Nth root of 34.3%, so the share of grain reaching the bottom is exactly the face value the agent recovered on the committed run.</p>
+      </section>
+      <section>
+        <h4>The colour</h4>
+        <p>Ground from the soil of the ploughed field, verdigris from Kephisodotos' bronze, warm marble from the Roman copies, terracotta from Attic red-figure ware. Gold is reserved for one thing only: value actually recovered.</p>
+      </section>
+      <section>
+        <h4>The type</h4>
+        <p>Cinzel, cut from Roman inscriptional capitals, for section marks only. Cormorant Garamond for display. Archivo — a face drawn for records — for text. IBM Plex Mono for every figure, rule and hash.</p>
+      </section>
+    </div>
+    <div class="sign">
+      <span>Built for the Razorpay AI Buildathon 2026 · Track 03, AI Revenue Recovery</span>
+      <span>Sole author: Arnav · MIT</span>
+      <span class="mono">every figure on this page is read from results/checkpoint-main-s42-agent-v1</span>
+    </div>
+  </div>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var D = JSON.parse(document.getElementById("ploutos-data").textContent);
+  var reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  /* ---- the same two curves the stylesheet uses, solved in JS so that
+          script-driven motion and CSS motion are literally the same easing.
+          Lame coming, winged going. ------------------------------------- */
+  function bezier(x1, y1, x2, y2) {
+    function A(a, b) { return 1 - 3 * b + 3 * a; }
+    function B(a, b) { return 3 * b - 6 * a; }
+    function C(a) { return 3 * a; }
+    function calc(t, a, b) { return ((A(a, b) * t + B(a, b)) * t + C(a)) * t; }
+    function slope(t, a, b) { return 3 * A(a, b) * t * t + 2 * B(a, b) * t + C(a); }
+    return function (x) {
+      if (x <= 0) return 0;
+      if (x >= 1) return 1;
+      var t = x;
+      for (var i = 0; i < 6; i++) {
+        var d = slope(t, x1, x2);
+        if (d === 0) break;
+        t -= (calc(t, x1, x2) - x) / d;
+      }
+      return calc(t, y1, y2);
+    };
+  }
+  var easeLame = bezier(0.16, 0.72, 0.24, 1);
+
+  /* run `step(progress)` from 0 to 1 over `dur`, on the lame curve */
+  function tween(dur, step, done) {
+    if (reduced) { step(1); if (done) done(); return; }
+    var t0 = null;
+    (function frame(t) {
+      if (t0 === null) t0 = t;
+      var p = Math.min(1, (t - t0) / dur);
+      step(easeLame(p));
+      if (p < 1) requestAnimationFrame(frame);
+      else if (done) done();
+    })(performance.now());
+  }
+
+  /* fire once, the first time the element is genuinely on screen */
+  function onScreen(el, fn, threshold) {
+    if (!el) return;
+    var o = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { o.unobserve(e.target); fn(); }
+      });
+    }, { threshold: threshold || 0.25 });
+    o.observe(el);
+  }
+
+  /* ---- money, in the Indian grouping the rest of the project uses -------- */
+  var inr = new Intl.NumberFormat("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  var inr0 = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
+  function money(paise) { return "₹" + inr.format(paise / 100); }
+  function money0(paise) { return "₹" + inr0.format(Math.round(paise / 100)); }
+  function pct(x, dp) { return (x * 100).toFixed(dp === undefined ? 1 : dp) + "%"; }
+
+  /* ---- reveal on entry. Lame, always. ----------------------------------- */
+  var io = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); }
+    });
+  }, { rootMargin: "0px 0px -12% 0px", threshold: 0.08 });
+  document.querySelectorAll(".band, .rise, .colophon").forEach(function (el) { io.observe(el); });
+
+  /* ---- the furrow gauge -------------------------------------------------- */
+  var gauge = document.getElementById("gauge");
+  var ticking = false;
+  function drawGauge() {
+    var h = document.documentElement.scrollHeight - window.innerHeight;
+    gauge.style.width = (h > 0 ? Math.min(1, window.scrollY / h) * 100 : 0) + "%";
+    ticking = false;
+  }
+  window.addEventListener("scroll", function () {
+    if (!ticking) { ticking = true; window.requestAnimationFrame(drawGauge); }
+  }, { passive: true });
+  drawGauge();
+
+  /* ---- counting: grain, counted out ------------------------------------- */
+  function count(el, to, render) {
+    if (reduced) { el.textContent = render(to); return; }
+    var t0 = null, dur = 1500;
+    function frame(t) {
+      if (t0 === null) t0 = t;
+      var p = Math.min(1, (t - t0) / dur);
+      var e = 1 - Math.pow(1 - p, 4);
+      el.textContent = render(to * e);
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+  var countIo = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      var el = e.target;
+      countIo.unobserve(el);
+      var to = parseFloat(el.getAttribute("data-count"));
+      var kind = el.getAttribute("data-fmt");
+      count(el, to, function (v) {
+        if (kind === "money") return money(v);
+        if (kind === "money0") return money0(v);
+        if (kind === "pct") return pct(v / 100);
+        return inr0.format(Math.round(v));
+      });
+    });
+  }, { threshold: 0.5 });
+  function watchCounts() { document.querySelectorAll("[data-count]").forEach(function (el) { countIo.observe(el); }); }
+
+  /* ======================================================================
+     TILES
+     ====================================================================== */
+  var hard = D.run.hardValue;
+  document.getElementById("tiles").innerHTML = [
+    ["Value at risk", D.run.atRisk, "money0", "is-gold", D.run.nCases + " failed invoices, one batch, one seed."],
+    ["Structurally unrecoverable", hard, "money0", "is-kiln", pct(hard / D.run.atRisk) + " of face value, by the taxonomy's own hard classes. No policy can reach it."],
+    ["Derived ceiling", D.run.ceiling, "money0", "is-patina", "What an oracle with full ground truth actually achieved. The run fails if any blind policy beats it."],
+    ["Harm events", 0, "plain", "is-patina", "Across all five policies. No double charge, no contact out of hours, no message to a suppressed payer."]
+  ].map(function (t) {
+    return '<div class="tile"><dt>' + t[0] + "</dt>" +
+      '<dd class="' + t[3] + '" data-count="' + t[1] + '" data-fmt="' + t[2] + '">' +
+      (t[2] === "plain" ? "0" : "₹0") + "</dd>" +
+      '<p class="foot">' + t[4] + "</p></div>";
+  }).join("");
+
+  /* ======================================================================
+     THE GATE
+     ====================================================================== */
+
+  /* The vocabulary, in ladder order. The rung number is real: LADDER_MONOTONIC
+     forbids advancing more than one rung past the highest reached. */
+  var LADDER = [
+    ["·", "wait"],
+    ["·", "serve_predebit_notice"],
+    ["·", "request_afa"],
+    ["0", "retry_debit"],
+    ["1", "notify_soft"],
+    ["2", "request_instrument_update"],
+    ["2", "switch_rail"],
+    ["3", "send_payment_link"],
+    ["4", "capture_promise_to_pay"],
+    ["5", "grant_grace"],
+    ["6", "handoff_human"],
+    ["7", "stop_terminal"]
+  ];
+
+  var steps = D.gate.steps;
+  var at = 0;
+  var timer = null;
+
+  var elLadder = document.getElementById("ladder");
+  var elIdx = document.getElementById("gate-i");
+  var elClock = document.getElementById("gate-clock");
+  var elChose = document.getElementById("gate-chose");
+  var elWhy = document.getElementById("gate-why");
+  var elHash = document.getElementById("gate-hash");
+  var elPerm = document.getElementById("n-permitted");
+  var elRef = document.getElementById("n-refused");
+  var elRej = document.getElementById("n-rejected");
+  document.getElementById("gate-n").textContent = steps.length;
+
+  document.getElementById("gate-case").innerHTML =
+    "<span class=\"mono\">" + D.gate.case.case_id + "</span> · " + money(D.gate.case.at_risk_paise) +
+    " · first failed <span class=\"mono\">" + D.gate.case.first_code + "</span>. " +
+    "The mandate expires part-way through, which is what makes it worth reading.";
+
+  function clock(iso) {
+    var d = new Date(iso);
+    var days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+    var hh = String(d.getUTCHours()).padStart(2, "0");
+    var mm = String(d.getUTCMinutes()).padStart(2, "0");
+    return days[d.getUTCDay()] + " " + d.getUTCDate() + " Aug · " + hh + ":" + mm + " UTC";
+  }
+
+  function describe(a) {
+    if (!a) return "";
+    var bits = [];
+    if (a.rail) bits.push(a.rail);
+    if (a.channel) bits.push(a.channel);
+    if (a.language) bits.push(a.language);
+    if (a.until) bits.push("until " + a.until.slice(11, 16) + " UTC");
+    if (a.priority) bits.push(a.priority + " priority");
+    return bits.join(" · ");
+  }
+
+  function render() {
+    var s = steps[at];
+    var permitted = {};
+    s.permitted.forEach(function (p) { permitted[p] = true; });
+
+    /* group refusals by action; a null channel means the whole action is out,
+       a named channel means only that channel is */
+    var blocked = {};
+    var channelOnly = {};
+    s.excluded.forEach(function (x) {
+      if (x.channel === null) { if (!blocked[x.action]) blocked[x.action] = x; }
+      else { (channelOnly[x.action] = channelOnly[x.action] || []).push(x); }
+    });
+
+    var nRef = 0;
+    elLadder.innerHTML = LADDER.map(function (row) {
+      var rung = row[0], name = row[1];
+      var isChosen = s.chose && s.chose.type === name;
+      var isPermitted = !!permitted[name];
+      var cls = "rung", why = "";
+
+      if (isChosen) {
+        cls += " is-chosen";
+        why = "<b>chosen</b> — " + (describe(s.chose) || "no parameters");
+      } else if (isPermitted) {
+        cls += " is-permitted";
+        var ch = channelOnly[name];
+        if (ch && ch.length) {
+          var rules = {};
+          ch.forEach(function (c) { (rules[c.rule] = rules[c.rule] || []).push(c.channel); });
+          why = Object.keys(rules).map(function (r) {
+            return "<b>" + r + "</b> closes " + rules[r].join(", ");
+          }).join(" · ");
+        } else {
+          why = "<b>permitted</b>";
+        }
+      } else {
+        cls += " is-refused";
+        nRef += 1;
+        var b = blocked[name] || (channelOnly[name] || [])[0];
+        why = b ? "<b>" + b.rule + "</b> — " + b.detail : "<b>not available at this rung</b>";
+      }
+
+      return '<div class="' + cls + '">' +
+        '<span class="rung-n">' + rung + "</span>" +
+        '<span class="rung-name">' + name + (isChosen ? '<span class="rung-tag">chose</span>' : "") + "</span>" +
+        '<span class="rung-why">' + why + "</span>" +
+        "</div>";
+    }).join("");
+
+    elIdx.textContent = at + 1;
+    elClock.textContent = clock(s.ts);
+    elPerm.textContent = s.permitted.length;
+    elRef.textContent = nRef;
+    elRej.textContent = "0";
+    elChose.textContent = s.chose ? s.chose.type.replace(/_/g, " ") : "—";
+    elWhy.textContent = s.rationale || s.diagnosis || "";
+    elHash.innerHTML = "obs <b>" + s.obsHash.slice(0, 16) + "</b><br>link <b>" + s.hash.slice(0, 16) + "</b>";
+  }
+
+  function go(n) {
+    at = (n + steps.length) % steps.length;
+    render();
+  }
+
+  var btnPlay = document.getElementById("gate-play");
+  function stop() {
+    if (timer) { clearInterval(timer); timer = null; }
+    btnPlay.textContent = "Play";
+    btnPlay.classList.add("is-on");
+  }
+  function play() {
+    if (timer) return stop();
+    btnPlay.textContent = "Pause";
+    btnPlay.classList.remove("is-on");
+    timer = setInterval(function () {
+      if (at === steps.length - 1) { go(0); } else { go(at + 1); }
+    }, 3400);
+  }
+  document.getElementById("gate-prev").addEventListener("click", function () { stop(); go(at - 1); });
+  document.getElementById("gate-next").addEventListener("click", function () { stop(); go(at + 1); });
+  btnPlay.addEventListener("click", play);
+  render();
+
+  /* start the walk-through only once it is actually on screen */
+  var gateIo = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (e.isIntersecting && !timer && !reduced) { gateIo.unobserve(e.target); play(); }
+    });
+  }, { threshold: 0.3 });
+  gateIo.observe(document.getElementById("ladder"));
+
+  /* ======================================================================
+     LEDGER TABLE
+     ====================================================================== */
+  var LABEL = {
+    "do-nothing": "do-nothing",
+    "naive-retry": "naive-retry",
+    "static-policy": "static-policy",
+    "agent": "agent",
+    "oracle": "oracle"
+  };
+  var tbody = document.querySelector("#ledger tbody");
+  tbody.innerHTML = D.policies.map(function (p) {
+    var cls = p.policy === "agent" ? "is-subject" : (p.policy === "oracle" ? "is-ceiling" : "");
+    var name = LABEL[p.policy] + (p.policy === "oracle" ? " — ceiling" : "");
+    return "<tr class=\"" + cls + "\" data-ceiling=\"" + p.ofCeiling + "\">" +
+      "<td>" + name + "</td>" +
+      "<td class=\"cell-money\">" + money(p.recovered) + "</td>" +
+      "<td>" + pct(p.ofFace) + "</td>" +
+      "<td><span class=\"bar\">" + pct(p.ofCeiling) + "<i></i></span></td>" +
+      "<td>" + money(p.net) + "</td>" +
+      "<td>" + p.cases + "</td>" +
+      "<td>" + p.attempts + "</td>" +
+      "<td>" + p.contacts + "</td>" +
+      "<td>" + p.escalated + "</td>" +
+      "<td class=\"clean\">" + (p.clean ? "clean" : String(p.harmEvents)) + "</td>" +
+      "</tr>";
+  }).join("");
+
+  var tableIo = new IntersectionObserver(function (entries) {
+    entries.forEach(function (e) {
+      if (!e.isIntersecting) return;
+      tableIo.unobserve(e.target);
+      e.target.querySelectorAll("tr").forEach(function (tr, i) {
+        var v = parseFloat(tr.getAttribute("data-ceiling")) || 0;
+        setTimeout(function () { tr.querySelector(".bar i").style.width = (v * 100) + "%"; }, reduced ? 0 : 120 * i);
+      });
+    });
+  }, { threshold: 0.2 });
+  tableIo.observe(tbody);
+
+  /* ======================================================================
+     THE COIN FLIP — paired interval
+     ====================================================================== */
+  (function ciChart() {
+    var p = D.paired;
+    var W = 1000, H = 190, padL = 20, padR = 20;
+    var lo = -21000000, hi = 21000000;              /* paise, ±₹2.1L */
+    var x = function (v) { return padL + ((v - lo) / (hi - lo)) * (W - padL - padR); };
+    var NS = "http://www.w3.org/2000/svg";
+    var MONO = "IBM Plex Mono, monospace";
+
+    function el(name, attrs, text) {
+      var n = document.createElementNS(NS, name);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      if (text !== undefined) n.textContent = text;
+      return n;
+    }
+
+    var svg = el("svg", {
+      viewBox: "0 0 " + W + " " + H,
+      role: "img",
+      "aria-label": "The paired difference between the agent and the static policy, gross and net, each with a 95 percent bootstrap interval that straddles zero."
+    });
+
+    /* signed, so a negative bound reads "−₹1,87,631" not "₹-1,87,631" */
+    function signed(paise) { return (paise < 0 ? "−" : "+") + money0(Math.abs(paise)); }
+
+    var zero = el("line", { x1: x(0), y1: 18, x2: x(0), y2: H - 34, stroke: "#7BA08F", "stroke-width": 1, "stroke-dasharray": "3 4", opacity: 0 });
+    var zeroLabel = el("text", { x: x(0), y: H - 18, "font-size": 11, fill: "#7BA08F", "text-anchor": "middle", "font-family": MONO, opacity: 0 }, "no difference");
+    svg.appendChild(zero);
+    svg.appendChild(zeroLabel);
+
+    var rows = [];
+    function row(y, label, point, cLow, cHigh) {
+      var bar = el("line", { x1: x(0), y1: y, x2: x(0), y2: y, stroke: "#BB5639", "stroke-width": 6, opacity: 0.3 });
+      var capL = el("line", { x1: x(cLow), y1: y - 9, x2: x(cLow), y2: y + 9, stroke: "#BB5639", "stroke-width": 1.5, opacity: 0 });
+      var capR = el("line", { x1: x(cHigh), y1: y - 9, x2: x(cHigh), y2: y + 9, stroke: "#BB5639", "stroke-width": 1.5, opacity: 0 });
+      var dot = el("circle", { cx: x(0), cy: y, r: 0, fill: "#C9A24A" });
+      var lbl = el("text", { x: padL, y: y - 20, "font-size": 11.5, fill: "#E7E2D4", "font-family": MONO, opacity: 0 }, label);
+      var tL = el("text", { x: x(cLow), y: y + 26, "font-size": 10.5, fill: "#6F7367", "text-anchor": "middle", "font-family": MONO, opacity: 0 }, signed(cLow));
+      var tR = el("text", { x: x(cHigh), y: y + 26, "font-size": 10.5, fill: "#6F7367", "text-anchor": "middle", "font-family": MONO, opacity: 0 }, signed(cHigh));
+      var tP = el("text", { x: x(point), y: y - 20, "font-size": 11.5, fill: "#C9A24A", "text-anchor": "middle", "font-family": MONO, opacity: 0 }, signed(point));
+      [bar, capL, capR, dot, lbl, tL, tR, tP].forEach(function (n) { svg.appendChild(n); });
+      rows.push({ bar: bar, capL: capL, capR: capR, dot: dot, fades: [lbl, tL, tR, tP, capL, capR], point: point, cLow: cLow, cHigh: cHigh });
+    }
+    row(64, "gross", p.grossDelta, p.grossCiLow, p.grossCiHigh);
+    row(136, "net", p.netDelta, p.netCiLow, p.netCiHigh);
+
+    var host = document.getElementById("ci-chart");
+    host.appendChild(svg);
+
+    onScreen(host, function () {
+      /* the zero line lands first: it is the thing the interval has to cross */
+      tween(500, function (t) { zero.setAttribute("opacity", t); zeroLabel.setAttribute("opacity", t); });
+
+      rows.forEach(function (r, i) {
+        setTimeout(function () {
+          /* the interval opens outward from zero in both directions at once */
+          tween(1100, function (t) {
+            r.bar.setAttribute("x1", x(r.cLow * t));
+            r.bar.setAttribute("x2", x(r.cHigh * t));
+          }, function () {
+            /* then the point estimate walks out to where it actually landed */
+            tween(700, function (t) {
+              r.dot.setAttribute("cx", x(r.point * t));
+              r.dot.setAttribute("r", 5 * t);
+            });
+            tween(700, function (t) { r.fades.forEach(function (n) { n.setAttribute("opacity", t); }); });
+          });
+        }, reduced ? 0 : 260 + i * 220);
+      });
+    }, 0.3);
+  })();
+
+  /* ======================================================================
+     THE 89 CASES THAT DIFFERED
+     ====================================================================== */
+  (function deltaChart() {
+    var ds = D.paired.deltas;
+    var W = 1000, H = 210, mid = 100, pad = 20;
+    var max = Math.max.apply(null, ds.map(function (d) { return Math.abs(d.delta); }));
+    var bw = (W - pad * 2) / ds.length;
+    var NS = "http://www.w3.org/2000/svg";
+    var MONO = "IBM Plex Mono, monospace";
+
+    function el(name, attrs, text) {
+      var n = document.createElementNS(NS, name);
+      for (var k in attrs) n.setAttribute(k, attrs[k]);
+      if (text !== undefined) n.textContent = text;
+      return n;
+    }
+
+    var ahead = ds.filter(function (d) { return d.delta > 0; });
+    var behind = ds.filter(function (d) { return d.delta < 0; });
+    var sum = function (a) { return a.reduce(function (t, d) { return t + d.delta; }, 0); };
+
+    var svg = el("svg", {
+      viewBox: "0 0 " + W + " " + H,
+      role: "img",
+      "aria-label": "Eighty-nine cases where the agent and the static policy recovered different amounts, drawn as a diverging bar strip that very nearly cancels to zero."
+    });
+
+    /* the axis draws itself first, then the bars grow out of it */
+    var axis = el("line", { x1: pad, y1: mid, x2: pad, y2: mid, stroke: "#262D24", "stroke-width": 1 });
+
+    var bars = ds.map(function (d, i) {
+      var h = (Math.abs(d.delta) / max) * 66;
+      var r = el("rect", {
+        x: (pad + i * bw).toFixed(2),
+        y: mid,
+        width: Math.max(1.2, bw - 1.4).toFixed(2),
+        height: 0,
+        fill: d.delta > 0 ? "#C9A24A" : "#BB5639",
+        opacity: 0.85
+      });
+      r.appendChild(el("title", {}, d.id + " · " + d.code + " · " + (d.delta > 0 ? "+" : "−") + money(Math.abs(d.delta))));
+      svg.appendChild(r);
+      return { node: r, h: h, up: d.delta > 0 };
+    });
+
+    svg.appendChild(axis);
+    var capTop = el("text", { x: pad, y: 20, "font-size": 11.5, fill: "#C9A24A", "font-family": MONO, opacity: 0 },
+      ahead.length + " cases the agent won · +" + money0(sum(ahead)));
+    var capBot = el("text", { x: pad, y: H - 12, "font-size": 11.5, fill: "#BB5639", "font-family": MONO, opacity: 0 },
+      behind.length + " cases it lost · −" + money0(Math.abs(sum(behind))));
+    var capNet = el("text", { x: W - pad, y: H - 12, "font-size": 11.5, fill: "#6F7367", "text-anchor": "end", "font-family": MONO, opacity: 0 },
+      "net −" + money(Math.abs(sum(ds))));
+    [capTop, capBot, capNet].forEach(function (n) { svg.appendChild(n); });
+
+    var host = document.getElementById("delta-chart");
+    host.appendChild(svg);
+
+    onScreen(host, function () {
+      tween(700, function (t) { axis.setAttribute("x2", pad + (W - pad * 2) * t); });
+
+      /* each bar grows out of the axis, swept left to right — the eye reads
+         the gold side filling, then the terracotta side taking it back */
+      bars.forEach(function (b, i) {
+        setTimeout(function () {
+          tween(620, function (t) {
+            var h = b.h * t;
+            b.node.setAttribute("height", h.toFixed(2));
+            b.node.setAttribute("y", (b.up ? mid - h : mid).toFixed(2));
+          });
+        }, reduced ? 0 : 320 + i * 11);
+      });
+
+      setTimeout(function () {
+        tween(800, function (t) { [capTop, capBot, capNet].forEach(function (n) { n.setAttribute("opacity", t); }); });
+      }, reduced ? 0 : 320 + ds.length * 11);
+    }, 0.25);
+  })();
+
+  /* ======================================================================
+     REGISTRY
+     ====================================================================== */
+  var order = { verified: 0, analogous: 1, unverified: 2 };
+  var rules = D.rules.slice().sort(function (a, b) {
+    return (order[a.status] - order[b.status]) || a.id.localeCompare(b.id);
+  });
+  document.getElementById("registry-grid").innerHTML = rules.map(function (r) {
+    return '<div class="rule">' +
+      '<span class="pip ' + r.status + '">' + r.status + "</span>" +
+      '<span class="rule-id">' + r.id + "</span>" +
+      '<span class="rule-sum">' + r.summary + "</span>" +
+      "</div>";
+  }).join("");
+
+  /* ======================================================================
+     THE CASCADE
+
+     Ploutos is a harvest god before he is a money god — Hesiod's is born in
+     a ploughed field, and every surviving image has him holding a horn of
+     grain. His wealth is counted in grain, so that is what falls here.
+
+     It runs behind the whole page, because the page is about one thing all
+     the way down: a bounded ladder of gates, each of which can stop a case.
+     Grain falls through a stack of them. Every line it survives it comes
+     out hotter — marble, wheat, gold, amber, deep orange — and every line
+     it fails, it is struck out in terracotta and gone.
+
+     The arithmetic is not decorative. Each gate passes PASS^(1/N), so the
+     share of grain that survives ALL of them is exactly PASS — 34.3%, the
+     face value the agent actually recovered on the committed run. Change
+     the checkpoint and the cascade rebalances itself.
+     ====================================================================== */
+  (function cascade() {
+    var canvas = document.getElementById("field");
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext("2d");
+
+    var PASS = D.policies.filter(function (p) { return p.policy === "agent"; })[0].ofFace;
+
+    var css = getComputedStyle(document.documentElement);
+    function tone(n, f) { return (css.getPropertyValue(n) || f).trim() || f; }
+    function hex(h) {
+      h = h.replace("#", "");
+      if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+      return [parseInt(h.slice(0, 2), 16), parseInt(h.slice(2, 4), 16), parseInt(h.slice(4, 6), 16)];
+    }
+    function mix(a, b, t) {
+      return [Math.round(a[0] + (b[0] - a[0]) * t), Math.round(a[1] + (b[1] - a[1]) * t), Math.round(a[2] + (b[2] - a[2]) * t)];
+    }
+    function rgba(c, a) { return "rgba(" + c[0] + "," + c[1] + "," + c[2] + "," + (a < 0 ? 0 : a).toFixed(3) + ")"; }
+    function clamp(v, a, b) { return v < a ? a : v > b ? b : v; }
+
+    var MARBLE = hex(tone("--marble", "#E7E2D4"));
+    var KILN = hex(tone("--kiln", "#BB5639"));
+    var PATINA = hex(tone("--patina", "#7BA08F"));
+    /* the heat ramp: wheat at the first gate, deep orange at the last */
+    var WHEAT = [227, 200, 122], GOLD = hex(tone("--gold", "#C9A24A")), EMBER = [193, 74, 20];
+
+    var W = 0, H = 0, N = 0, p1 = 0, lines = [], tiers = [], grains = [], flares = [], build = 0;
+
+    function ramp(t) { return t < 0.5 ? mix(WHEAT, GOLD, t * 2) : mix(GOLD, EMBER, (t - 0.5) * 2); }
+
+    function make(fresh) {
+      return {
+        x: Math.random() * W,
+        y: fresh ? -6 - Math.random() * 30 : -Math.random() * H * 1.15,
+        v: 0.26 + Math.random() * 0.58,     /* lame coming */
+        r: 0.9 + Math.random() * 1.7,
+        drift: (Math.random() - 0.5) * 0.15,
+        tier: 0,                            /* gates survived so far */
+        next: 0,                            /* index of the gate ahead of it */
+        state: "falling",
+        fade: 1
+      };
+    }
+
+    function size() {
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = Math.max(1, window.innerWidth);
+      H = Math.max(1, window.innerHeight);
+      canvas.width = Math.round(W * dpr);
+      canvas.height = Math.round(H * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      /* gates at regular intervals down the viewport */
+      N = Math.round(clamp(H / 185, 3, 6));
+      p1 = Math.pow(PASS, 1 / N);           /* so N of them compose to PASS */
+      lines = [];
+      tiers = [];
+      for (var i = 0; i < N; i++) {
+        lines.push(Math.round((H * (i + 1)) / (N + 1)) + 0.5);
+        tiers.push(ramp(N === 1 ? 1 : i / (N - 1)));
+      }
+
+      var n = Math.round(clamp(W / 5, 110, 320));
+      grains = [];
+      for (var k = 0; k < n; k++) grains.push(make(false));
+      flares = [];
+    }
+
+    function drawLines() {
+      for (var i = 0; i < N; i++) {
+        var y = lines[i];
+        /* each gate is tinted with the heat it grants */
+        var c = mix(PATINA, tiers[i], 0.4);
+        var g = ctx.createLinearGradient(0, y - 30, 0, y + 30);
+        g.addColorStop(0, rgba(c, 0));
+        g.addColorStop(0.5, rgba(c, 0.035 * build));
+        g.addColorStop(1, rgba(c, 0));
+        ctx.fillStyle = g;
+        ctx.fillRect(0, y - 30, W, 60);
+
+        ctx.save();
+        ctx.strokeStyle = rgba(c, 0.2 * build);
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 7]);
+        ctx.beginPath();
+        ctx.moveTo(0, y);
+        ctx.lineTo(W, y);
+        ctx.stroke();
+        ctx.restore();
+      }
+    }
+
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+      drawLines();
+
+      for (var i = 0; i < grains.length; i++) {
+        var s = grains[i];
+
+        if (s.state === "refused") {
+          s.fade -= 0.06;                                   /* winged going */
+          if (s.fade <= 0) { grains[i] = make(true); continue; }
+        } else {
+          s.y += s.v;
+          s.x += s.drift;
+
+          /* the gate immediately below it */
+          if (s.next < N && s.y >= lines[s.next]) {
+            var at = lines[s.next];
+            if (Math.random() < p1) {
+              s.tier += 1;
+              s.next += 1;
+              s.v *= 1.16;                                  /* it gains on every gate it clears */
+              flares.push({ x: s.x, y: at, t: 0, pass: true, col: tiers[s.tier - 1] });
+            } else {
+              s.state = "refused";
+              s.y = at;
+              flares.push({ x: s.x, y: at, t: 0, pass: false, col: KILN });
+            }
+          }
+          if (s.y > H + 12) { grains[i] = make(true); continue; }
+        }
+
+        var col, a;
+        if (s.state === "refused") { col = KILN; a = 0.95 * s.fade; }
+        else if (s.tier === 0) { col = MARBLE; a = 0.30; }
+        else { col = tiers[s.tier - 1]; a = 0.55 + 0.1 * s.tier; }
+
+        ctx.fillStyle = rgba(col, a * build);
+        ctx.beginPath();
+        ctx.arc(s.x, s.y, s.r + s.tier * 0.16, 0, 6.2832);
+        ctx.fill();
+
+        /* the hotter it is, the more light it carries */
+        if (s.tier > 0 && s.state !== "refused") {
+          ctx.fillStyle = rgba(col, 0.05 * s.tier * build);
+          ctx.beginPath();
+          ctx.arc(s.x, s.y, (s.r + s.tier * 0.16) * 3.4, 0, 6.2832);
+          ctx.fill();
+        }
+      }
+
+      /* the events at each line */
+      for (var f = flares.length - 1; f >= 0; f--) {
+        var fl = flares[f];
+        fl.t += fl.pass ? 0.05 : 0.09;                      /* refusals leave faster */
+        if (fl.t >= 1) { flares.splice(f, 1); continue; }
+        var e = 1 - Math.pow(1 - fl.t, 3);
+        var a2 = (1 - fl.t) * build;
+
+        if (fl.pass) {
+          ctx.strokeStyle = rgba(fl.col, 0.55 * a2);
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(fl.x, fl.y, 3 + e * 24, 1.2 + e * 7, 0, 0, 6.2832);
+          ctx.stroke();
+        } else {
+          var w = 3 + e * 13;
+          ctx.fillStyle = rgba(fl.col, 0.7 * a2);
+          ctx.fillRect(fl.x - w, fl.y - 1.1, w * 2, 2.2);
+        }
+      }
+
+      raf = requestAnimationFrame(frame);
+    }
+
+    var raf = null, running = false;
+    function start() { if (!running) { running = true; raf = requestAnimationFrame(frame); } }
+    function halt() { running = false; if (raf) cancelAnimationFrame(raf); raf = null; }
+
+    size();
+    var rt = null;
+    window.addEventListener("resize", function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () { halt(); size(); if (!reduced) start(); }, 140);
+    });
+
+    if (reduced) {
+      /* one still frame: the gates, and grain resting at its various heats */
+      build = 1;
+      ctx.clearRect(0, 0, W, H);
+      drawLines();
+      for (var q = 0; q < grains.length; q++) {
+        var g2 = grains[q];
+        if (g2.y < 0) continue;
+        var t = 0;
+        while (t < N && g2.y > lines[t]) t++;
+        ctx.fillStyle = rgba(t === 0 ? MARBLE : tiers[t - 1], t === 0 ? 0.3 : 0.6);
+        ctx.beginPath();
+        ctx.arc(g2.x, g2.y, g2.r, 0, 6.2832);
+        ctx.fill();
+      }
+      return;
+    }
+
+    tween(1800, function (t) { build = t; });
+    start();
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.hidden) halt(); else start();
+    });
+  })();
+
+  watchCounts();
+})();
+</script>
+
+
+</html>

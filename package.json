@@ -19,7 +19,9 @@
     "tune": "tsx src/cli/tune.ts",
     "migrate-cache": "tsx src/cli/migrate_cache.ts",
     "behaviour": "tsx src/cli/behaviour.ts",
-    "razorpay-demo": "tsx src/cli/razorpay_demo.ts"
+    "razorpay-demo": "tsx src/cli/razorpay_demo.ts",
+    "site": "node web/serve.mjs",
+    "site:build": "node web/build.mjs"
   },
   "dependencies": {
     "yaml": "^2.6.1",
