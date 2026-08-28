@@ -31,7 +31,7 @@
   "functions": {
     "api/**/*.ts": {
       "includeFiles": "config/**",
-      "maxDuration": 30
+      "maxDuration": 25
     }
   }
 }

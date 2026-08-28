@@ -231,8 +231,25 @@ export async function decide(req: Request): Promise<Response> {
     cache: new DecisionCache('/tmp/ploutos-live-nocache'),
   });
 
+  // A deadline of our own.
+  //
+  // The provider retries a 503 with backoff, which is right for a batch run
+  // and wrong here: when the model is overloaded it will spend the entire
+  // function budget retrying, the platform kills the invocation, and the
+  // caller gets an opaque gateway timeout instead of the gate result we
+  // already have in hand. The retry policy is shared with the measured path
+  // and must not be weakened for a demo, so the bound goes here instead.
+  const MODEL_DEADLINE_MS = 10_000;
+  let expired: ReturnType<typeof setTimeout> | undefined;
+  const deadline = new Promise<never>((_, reject) => {
+    expired = setTimeout(
+      () => reject(new Error(`the model did not answer within ${MODEL_DEADLINE_MS / 1000}s`)),
+      MODEL_DEADLINE_MS,
+    );
+  });
+
   try {
-    const decision = await agent.decide({
+    const decision = await Promise.race([deadline, agent.decide({
       observation,
       permitted: {
         case_id: upload.case_id,
@@ -243,10 +260,11 @@ export async function decide(req: Request): Promise<Response> {
         excluded: gate.excluded,
       },
       ctx: { registry, taxonomy, now, run_id: 'live-demo' },
-    });
+    })]);
 
     // The gate is the authority, here as everywhere else. If a choice outside
     // the permitted set ever arrived, it would be reported, not executed.
+    clearTimeout(expired);
     const outside = !gate.permitted.includes(decision.action.type);
 
     return json(
@@ -274,6 +292,7 @@ export async function decide(req: Request): Promise<Response> {
   } catch (err) {
     // Fail loudly. allowFallback is off precisely so that a broken call cannot
     // return static-policy's answer wearing the agent's name.
+    clearTimeout(expired);
     return json(
       {
         case_id: upload.case_id,
