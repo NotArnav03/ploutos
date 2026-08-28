@@ -1251,7 +1251,7 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
       try {
         res = await fetch("/api/decide", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: { "content-type": "text/plain;charset=utf-8" },
           body: body,
         });
         data = await res.json();

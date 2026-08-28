@@ -24,6 +24,8 @@
  * The key lives in the Vercel environment, server side. It is never sent to the
  * browser.
  */
+import type { IncomingMessage, ServerResponse } from 'node:http';
+
 import { z } from 'zod';
 
 import { makeAgent } from '../src/agent/agent.js';
@@ -86,9 +88,11 @@ function clockFor(invoice: Invoice): Timestamp {
   return toTimestamp(base + 60 * 60 * 1000);
 }
 
-export const config = { runtime: 'nodejs', maxDuration: 30 };
-
-export default async function handler(req: Request): Promise<Response> {
+/**
+ * The handler proper: a Request in, a Response out, no platform in sight.
+ * Exported so it can be exercised directly in a test without a server.
+ */
+export async function decide(req: Request): Promise<Response> {
   if (req.method !== 'POST') return json({ error: 'POST an invoice record as JSON.' }, 405);
 
   if (overBudget()) {
@@ -289,4 +293,50 @@ export default async function handler(req: Request): Promise<Response> {
       502,
     );
   }
+}
+
+/**
+ * Vercel invokes a Node function with (IncomingMessage, ServerResponse), not
+ * with the Web signature. The first deploy of this file returned a Response
+ * object that the adapter simply discarded, so a GET hung until the gateway
+ * timed out and a POST died on req.text(). Adapting here keeps the decision
+ * logic above platform-agnostic and directly testable.
+ */
+export default async function handler(
+  req: IncomingMessage & { body?: unknown },
+  res: ServerResponse,
+): Promise<void> {
+  let body = '';
+  if (req.body !== undefined && req.body !== null) {
+    // Already read and parsed upstream, by content type.
+    body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  } else {
+    const chunks: Buffer[] = [];
+    let size = 0;
+    for await (const chunk of req) {
+      const buf = chunk as Buffer;
+      size += buf.length;
+      if (size > MAX_BODY_BYTES) break;
+      chunks.push(buf);
+    }
+    body = Buffer.concat(chunks).toString('utf8');
+  }
+
+  const headers = new Headers();
+  for (const [k, v] of Object.entries(req.headers)) {
+    if (typeof v === 'string') headers.set(k, v);
+  }
+
+  const method = req.method ?? 'GET';
+  const request = new Request(`https://ploutos.invalid${req.url ?? '/api/decide'}`, {
+    method,
+    headers,
+    // GET and HEAD may not carry one, and constructing it with one throws.
+    ...(method === 'GET' || method === 'HEAD' ? {} : { body }),
+  });
+
+  const out = await decide(request);
+  res.statusCode = out.status;
+  out.headers.forEach((value, key) => res.setHeader(key, value));
+  res.end(await out.text());
 }
