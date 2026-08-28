@@ -40,9 +40,9 @@ Three things it sets out to prove, in order of how hard they were:
 
 https://github.com/NotArnav03/ploutos
 
-**Still private as of 28 Aug 2026.** It has to be made public before submitting,
-or a judge cannot open the README, the committed trail, or any of the evidence
-cited below.
+Public. Verified 28 Aug 2026 that an anonymous request reaches the README, both
+architecture diagrams, the rules registry, the metrics and the gzipped audit
+trail — every artefact this document cites.
 
 ## Live Demo
 
@@ -233,11 +233,17 @@ Still to do:
 - [x] Repo pushed to GitHub — `master`, site included
 - [x] Site deployed and serving — https://ploutos-one.vercel.app, verified
       byte-identical to a clean rebuild of the committed run (102,886 bytes)
-- [ ] **Repo made public** — still private 28 Aug 2026, and it blocks everything
-      a judge needs to check
-- [ ] README renders; mermaid diagrams render on GitHub (needs public first)
-- [ ] `GEMINI_API_KEY` set in the Vercel project environment, so the live
-      decision in section III works. Without it the gate still runs and the
-      page says which half did not
+- [x] **Repo made public**, and every artefact cited here fetches anonymously
+- [x] README renders; both mermaid blocks in `docs/ARCHITECTURE.md` are
+      `flowchart` and `sequenceDiagram`, which GitHub renders natively, and
+      every code fence across README and docs is balanced
+- [x] MIT `LICENSE` added — the README claimed MIT and GitHub detected no
+      licence, because the file did not exist
+- [x] Live decision working end to end, verified 28 Aug 2026 against the
+      deployed endpoint: `CASE-00005` returned HTTP 200 in 2.0s, the gate
+      permitted 8 of 12 actions, and the model chose `request_afa` on
+      whatsapp — inside the permitted set, and the same action the recorded
+      run chose on this case. `LIVE_MODEL=gemini-3.1-flash-lite`, on a
+      free-tier key, so the demo cannot incur a charge
 - [ ] Video recorded, under 5:00, link added above
 - [ ] Form fields pasted from this document
