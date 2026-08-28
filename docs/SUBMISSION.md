@@ -38,7 +38,24 @@ Three things it sets out to prove, in order of how hard they were:
 
 ## GitHub Repository URL
 
-`https://github.com/<user>/ploutos` — *fill in once pushed*
+https://github.com/NotArnav03/ploutos
+
+**Still private as of 28 Aug 2026.** It has to be made public before submitting,
+or a judge cannot open the README, the committed trail, or any of the evidence
+cited below.
+
+## Live Demo
+
+https://ploutos-one.vercel.app
+
+The project site: the problem, the policy gate walked step by step over
+`CASE-00005`, the results table, the paired comparison, and the rules registry
+with its verification statuses.
+
+`node web/build.mjs` regenerates it from `results/checkpoint-main-s42-agent-v1`
+on every push, so the page cannot drift from the run it reports. There is no
+backend, no credential, and no model call at page load — the decisions it shows
+are the recorded ones, and it renders identically offline.
 
 ## Pitch Video Link
 
@@ -190,9 +207,9 @@ npm run replay -- --run results/checkpoint-main-s42-agent-v1 --case CASE-00005
 
 ## Pre-submission checklist
 
-Verified 27 Aug 2026:
+Verified 27 Aug 2026, re-checked 28 Aug 2026:
 
-- [x] `npm test` green (**156 passed**), `npm run typecheck` clean
+- [x] `npm test` green (**166 passed**), `npm run typecheck` clean
 - [x] `npm run eval` reproduces the README table — **2,736 cached, 0 live calls**
 - [x] `npm run replay -- --verify` — **all chains verified across 33,768 events**
 - [x] No API key committed — `.env` is gitignored, `.env.example` values empty,
@@ -206,6 +223,11 @@ Verified 27 Aug 2026:
 
 Still to do:
 
-- [ ] Repo pushed public; README renders; mermaid diagrams render on GitHub
+- [x] Repo pushed to GitHub — `master`, site included
+- [x] Site deployed and serving — https://ploutos-one.vercel.app, verified
+      byte-identical to a clean rebuild of the committed run (102,886 bytes)
+- [ ] **Repo made public** — still private 28 Aug 2026, and it blocks everything
+      a judge needs to check
+- [ ] README renders; mermaid diagrams render on GitHub (needs public first)
 - [ ] Video recorded, under 5:00, link added above
 - [ ] Form fields pasted from this document
