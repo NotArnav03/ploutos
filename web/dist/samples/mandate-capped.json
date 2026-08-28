@@ -1,0 +1,83 @@
+{
+  "case_id": "CASE-00020",
+  "customer": {
+    "id": "CUST-00020",
+    "segment": "smb",
+    "tenure_months": 19,
+    "ltv_paise": 47498100,
+    "prior_failures": 1,
+    "prior_recoveries": 1,
+    "state": "Rajasthan",
+    "language_pref": "hinglish",
+    "channels": {
+      "sms": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      },
+      "email": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      },
+      "whatsapp": {
+        "reachable": false,
+        "consent": true,
+        "dnd": false
+      },
+      "inapp": {
+        "reachable": false,
+        "consent": true,
+        "dnd": false
+      }
+    }
+  },
+  "subscription": {
+    "id": "SUB-00020",
+    "customer_id": "CUST-00020",
+    "plan": {
+      "amount_paise": 2499900,
+      "interval": "monthly"
+    },
+    "rail": "upi_autopay",
+    "mandate": {
+      "ref": "MND-00020",
+      "status": "active",
+      "max_amount_paise": 2124915,
+      "valid_till": "2028-05-22T00:00:00.000Z",
+      "created_at": "2024-09-06T00:00:00.000Z",
+      "afa_required": true,
+      "last_predebit_notice_at": "2026-07-31T16:00:00.000Z"
+    },
+    "started_at": "2025-01-08T00:00:00.000Z",
+    "cycles_completed": 19,
+    "alternate_rails": []
+  },
+  "invoice": {
+    "id": "INV-00020",
+    "subscription_id": "SUB-00020",
+    "customer_id": "CUST-00020",
+    "amount_paise": 2499900,
+    "due_date": "2026-08-02T11:00:00.000Z",
+    "status": "failed",
+    "first_failed_at": "2026-08-02T11:00:00.000Z",
+    "attempts": [
+      {
+        "id": "ATT-00020-1",
+        "invoice_id": "INV-00020",
+        "seq": 1,
+        "ts": "2026-08-02T11:00:00.000Z",
+        "rail": "upi_autopay",
+        "amount_paise": 2499900,
+        "code": "MANDATE_CAP_EXCEEDED",
+        "class": "soft_action",
+        "remedy": "amend_mandate",
+        "succeeded": false,
+        "retry_allowed_after": null,
+        "description": "Debit exceeds mandate cap"
+      }
+    ],
+    "contacts": [],
+    "promises": []
+  }
+}

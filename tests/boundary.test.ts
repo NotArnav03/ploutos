@@ -56,6 +56,39 @@ const FORBIDDEN: ReadonlyArray<{ dir: string; mustNotImport: string; why: string
     mustNotImport: 'razorpay',
     why: 'the domain model must not depend on one gateway vendor',
   },
+  // The third boundary: the live demo endpoint.
+  //
+  // api/ makes a real model call with a real credential. It is a sandbox, not
+  // evidence. If the harness or the decision path could import it, a measured
+  // number could come to depend on a key being present and a network being up,
+  // which is the whole thing `npm run eval` exists to avoid. And api/ must not
+  // reach ground truth either: it decides from the uploaded record alone, the
+  // same as every other policy.
+  {
+    dir: 'api',
+    mustNotImport: 'world',
+    why: 'the live demo decides from the uploaded record, not from ground truth',
+  },
+  {
+    dir: 'src/eval',
+    mustNotImport: 'api',
+    why: 'a measured run must never depend on the live endpoint',
+  },
+  {
+    dir: 'src/policy',
+    mustNotImport: 'api',
+    why: 'policy decisions must not route through a network handler',
+  },
+  {
+    dir: 'src/agent',
+    mustNotImport: 'api',
+    why: 'the agent is called by the endpoint, never the other way round',
+  },
+  {
+    dir: 'src/domain',
+    mustNotImport: 'api',
+    why: 'the domain model must not depend on a deployment target',
+  },
 ];
 
 function tsFilesIn(dir: string): string[] {
@@ -95,7 +128,11 @@ describe('module boundary', () => {
             ? path.relative(REPO_ROOT, path.resolve(path.dirname(file), spec))
             : spec;
           const normalised = resolved.split(path.sep).join('/');
-          if (normalised.startsWith(`src/${mustNotImport}`) || normalised === mustNotImport) {
+          // `world` and `razorpay` name directories under src/; `api` is at the
+          // repo root. Match either, and only on a whole path segment, so that
+          // a hypothetical src/worldly would not trip the src/world rule.
+          const roots = [`src/${mustNotImport}`, mustNotImport];
+          if (roots.some((r) => normalised === r || normalised.startsWith(`${r}/`))) {
             offenders.push(`${path.relative(REPO_ROOT, file)} -> ${spec}`);
           }
         }

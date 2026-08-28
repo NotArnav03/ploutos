@@ -399,6 +399,57 @@ a:hover { color: var(--gold-lift); transition: color var(--dur-winged) var(--eas
 .tally .n-refused { color: var(--kiln); }
 
 /* ==========================================================================
+   LIVE — one real decision on an uploaded case
+   ========================================================================== */
+
+.live { display: grid; gap: 1px; background: var(--line-soft); border: 1px solid var(--line); grid-template-columns: 1fr; }
+@media (min-width: 60rem) { .live { grid-template-columns: minmax(0, 21rem) minmax(0, 1fr); } }
+
+.live-input { background: var(--soil-1); padding: clamp(1.25rem, 3vw, 1.75rem); display: flex; flex-direction: column; gap: 1.1rem; }
+.live-out { background: var(--soil-1); padding: clamp(1.25rem, 3vw, 1.75rem); min-height: 20rem; }
+
+.drop {
+  border: 1px dashed var(--line);
+  background: var(--soil-2);
+  padding: 1.75rem 1.25rem;
+  text-align: center;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  transition: border-color var(--dur-winged) var(--ease-winged), background var(--dur-winged) var(--ease-winged);
+}
+.drop:hover, .drop:focus-visible { border-color: var(--gold-line); background: var(--soil-3); }
+.drop.is-over { border-color: var(--gold); background: var(--gold-wash); }
+.drop-main { font-size: 0.92rem; color: var(--marble); }
+.drop-sub { font-size: 0.72rem; line-height: 1.5; color: var(--marble-faint); }
+
+.live-or { font-size: 0.66rem; letter-spacing: 0.13em; text-transform: uppercase; color: var(--marble-faint); }
+.samples { display: flex; flex-direction: column; gap: 1px; background: var(--line-soft); border: 1px solid var(--line-soft); }
+.sample { background: var(--soil-2); border: 0; border-left: 2px solid transparent; padding: 0.8rem 0.9rem; text-align: left; cursor: pointer; display: flex; flex-direction: column; gap: 0.28rem; font-family: inherit; transition: background var(--dur-winged) var(--ease-winged), border-color var(--dur-winged) var(--ease-winged); }
+.sample:hover:not(:disabled) { background: var(--soil-3); border-left-color: var(--gold-line); }
+.sample:disabled { opacity: 0.45; cursor: wait; }
+.sample b { font-size: 0.8rem; font-weight: 500; color: var(--marble); }
+.sample span { font-size: 0.71rem; line-height: 1.5; color: var(--marble-faint); }
+.sample-dl { font-size: 0.66rem; color: var(--marble-faint); }
+.sample-dl a { color: var(--marble-dim); }
+
+.live-idle { font-size: 0.86rem; line-height: 1.6; color: var(--marble-faint); max-width: 34rem; }
+.live-busy { display: flex; align-items: center; gap: 0.7rem; font-size: 0.82rem; color: var(--marble-dim); font-family: var(--face-mono); }
+.live-busy i { width: 7px; height: 7px; border-radius: 50%; background: var(--gold); animation: pulse 1.1s var(--ease-lame) infinite; }
+@keyframes pulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 1; } }
+
+.live-err { border-left: 2px solid var(--kiln); background: var(--kiln-wash); padding: 1rem 1.15rem; display: flex; flex-direction: column; gap: 0.5rem; }
+.live-err b { font-size: 0.85rem; color: var(--kiln); font-weight: 500; }
+.live-err p { font-size: 0.78rem; line-height: 1.55; color: var(--marble-dim); }
+.live-err ul { margin: 0; padding-left: 1.1rem; font-family: var(--face-mono); font-size: 0.72rem; color: var(--marble-faint); line-height: 1.7; }
+
+.live-head { display: flex; flex-wrap: wrap; gap: 0.4rem 1.1rem; align-items: baseline; padding-bottom: 0.9rem; margin-bottom: 1.1rem; border-bottom: 1px solid var(--line-soft); font-family: var(--face-mono); font-size: 0.76rem; color: var(--marble-faint); }
+.live-head b { color: var(--marble); font-weight: 500; }
+.live-head .tag-live { color: var(--gold); border: 1px solid var(--gold-line); padding: 0.08rem 0.4rem; font-size: 0.62rem; letter-spacing: 0.07em; text-transform: uppercase; }
+.live-note { font-size: 0.74rem; color: var(--marble-faint); margin-top: 1rem; line-height: 1.55; }
+
+/* ==========================================================================
    LEDGER — the results table
    ========================================================================== */
 
@@ -592,11 +643,43 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
     </div>
   </section>
 
-  <!-- ================= 3. PEACE HOLDS WEALTH ================= -->
+  <!-- ================= 3. RUN IT YOURSELF ================= -->
+  <section class="band shell" id="live">
+    <div class="band-head">
+      <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
+      <p class="inscription">III &middot; Run it yourself</p>
+      <h2>The case above is one I chose. Bring your own.</h2>
+      <div class="column">Upload an invoice record, or run one of the samples. The same gate computes the permitted set, and a <strong>live model call</strong> chooses from it and writes its reasoning. One decision, made now, not replayed.</div>
+    </div>
+
+    <div class="live rise">
+      <div class="live-input">
+        <div class="drop" id="drop" tabindex="0" role="button" aria-label="Upload an invoice record">
+          <p class="drop-main">Drop a case record here</p>
+          <p class="drop-sub"><span class="mono">.json</span> or <span class="mono">.jsonl</span> — any record from <span class="mono">data/batches</span> works, ground truth ignored</p>
+          <input type="file" id="file" accept=".json,.jsonl,application/json" hidden>
+        </div>
+
+        <p class="live-or">or run a sample</p>
+        <div class="samples" id="samples"></div>
+      </div>
+
+      <div class="live-out" id="live-out">
+        <p class="live-idle">Nothing submitted yet. The result appears here: what the engine permitted, which rule refused everything else, and what the model chose.</p>
+      </div>
+    </div>
+
+    <div class="prose column rise" style="margin-top:2.75rem">
+      <p><strong>This makes one real model call and stops.</strong> It does not run the recovery loop, because it cannot do so honestly — a case record carries a <span class="mono">latent</span> block of ground truth that the simulator uses to answer an action, and without it there is nothing to say whether a retry would have succeeded. Inventing one and reporting the outcome as a result is exactly the kind of thing this project is built to avoid, so the endpoint stops at the decision, which needs no world at all.</p>
+      <p>Nothing here is in the measured path. <span class="mono">tests/boundary.test.ts</span> fails the build if <span class="mono">src/eval</span>, <span class="mono">src/policy</span>, <span class="mono">src/agent</span> or <span class="mono">src/domain</span> imports this endpoint — so a number the project reports can never come to depend on a key being present. The credential lives server-side and never reaches your browser.</p>
+    </div>
+  </section>
+
+  <!-- ================= 4. PEACE HOLDS WEALTH ================= -->
   <section class="band shell" id="architecture">
     <div class="band-head">
       <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
-      <p class="inscription">III · Peace holds wealth</p>
+      <p class="inscription">IV &middot; Peace holds wealth</p>
       <h2>Kephisodotos carved Prosperity as an infant, held.</h2>
       <div class="column">Around 375 BCE he set a bronze in the Athenian Agora: Eirene — Peace — standing in a heavy peplos with the child Ploutos on her arm. Wealth as something that cannot yet stand on its own, and needs the thing holding it. That is the architecture.</div>
     </div>
@@ -687,7 +770,7 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
   <section class="band shell" id="results">
     <div class="band-head">
       <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
-      <p class="inscription">IV · Hoarders and wasters</p>
+      <p class="inscription">V &middot; Hoarders and wasters</p>
       <h2>Dante put Ploutos over the fourth circle, guarding both.</h2>
       <div class="column">The hoarders who released nothing and the wasters who flung it away, punished in the same ring for the same error in opposite directions. Recovery has the same two failure modes, and they are the two baselines: <strong>do-nothing</strong> recovers ₹0, <strong>naive-retry</strong> burns 1,264 attempts to collect 6.6%.</div>
     </div>
@@ -722,7 +805,7 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
   <section class="band shell" id="honest">
     <div class="band-head">
       <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
-      <p class="inscription">V · The honest reading</p>
+      <p class="inscription">VI &middot; The honest reading</p>
       <h2>The agent does not beat the rules engine. It ties with it.</h2>
     </div>
 
@@ -746,7 +829,7 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
   <section class="band shell" id="registry">
     <div class="band-head">
       <div class="furrows" aria-hidden="true"><span></span><span></span><span></span></div>
-      <p class="inscription">VI · Nothing is a mystery</p>
+      <p class="inscription">VII &middot; Nothing is a mystery</p>
       <h2>The Eleusinian rite was sealed. This trail is the opposite.</h2>
       <div class="column">Initiates could not say what they had seen. Here every bound the engine enforces is written down, carries a verification status, and names its primary source or admits it does not have one.</div>
     </div>
@@ -1079,6 +1162,202 @@ footer { border-top: 1px solid var(--line); background: var(--soil-1); padding-b
     });
   }, { threshold: 0.3 });
   gateIo.observe(document.getElementById("ladder"));
+
+  /* ======================================================================
+     LIVE DECISION
+
+     Posts a case record to /api/decide, which runs the real gate and makes
+     one real model call. Everything else on this page is replayed from
+     committed decisions; this is the one thing that happens now.
+     ====================================================================== */
+  (function live() {
+    var out = document.getElementById("live-out");
+    var drop = document.getElementById("drop");
+    var file = document.getElementById("file");
+    var samplesEl = document.getElementById("samples");
+    if (!out || !drop || !file || !samplesEl) return;
+
+    var busy = false;
+
+    /* the samples, runnable in one click and downloadable to edit */
+    samplesEl.innerHTML = (D.samples || []).map(function (s, i) {
+      return '<button class="sample" type="button" data-i="' + i + '">' +
+        "<b>" + s.label + "</b><span>" + s.note + "</span>" +
+        '<span class="sample-dl">or <a href="/samples/' + s.file + '" download>download the record</a> and edit it</span>' +
+        "</button>";
+    }).join("");
+
+    samplesEl.addEventListener("click", function (e) {
+      var btn = e.target.closest(".sample");
+      if (!btn || e.target.tagName === "A") return;
+      var s = D.samples[Number(btn.getAttribute("data-i"))];
+      if (s) send(s.record, s.label);
+    });
+
+    /* upload */
+    drop.addEventListener("click", function () { file.click(); });
+    drop.addEventListener("keydown", function (e) {
+      if (e.key === "Enter" || e.key === " ") { e.preventDefault(); file.click(); }
+    });
+    file.addEventListener("change", function () {
+      if (file.files && file.files[0]) read(file.files[0]);
+    });
+    ["dragenter", "dragover"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.add("is-over"); });
+    });
+    ["dragleave", "drop"].forEach(function (ev) {
+      drop.addEventListener(ev, function (e) { e.preventDefault(); drop.classList.remove("is-over"); });
+    });
+    drop.addEventListener("drop", function (e) {
+      var f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
+      if (f) read(f);
+    });
+
+    function read(f) {
+      if (f.size > 96 * 1024) return fail("That file is too large.", "The limit is 96 KB — one case record, not a whole batch.");
+      var r = new FileReader();
+      r.onload = function () { send(String(r.result), f.name); };
+      r.onerror = function () { fail("That file could not be read.", null); };
+      r.readAsText(f);
+    }
+
+    function esc(v) {
+      return String(v).replace(/[&<>"]/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c];
+      });
+    }
+
+    function fail(title, detail, list) {
+      out.innerHTML = '<div class="live-err"><b>' + esc(title) + "</b>" +
+        (detail ? "<p>" + esc(detail) + "</p>" : "") +
+        (list && list.length ? "<ul>" + list.map(function (d) { return "<li>" + esc(d) + "</li>"; }).join("") + "</ul>" : "") +
+        "</div>";
+    }
+
+    function setBusy(on, what) {
+      busy = on;
+      samplesEl.querySelectorAll(".sample").forEach(function (b) { b.disabled = on; });
+      if (on) {
+        out.innerHTML = '<div class="live-busy"><i></i>running the gate, then asking the model — ' + esc(what) + "</div>";
+      }
+    }
+
+    async function send(payload, what) {
+      if (busy) return;
+      setBusy(true, what);
+      var body = typeof payload === "string" ? payload : JSON.stringify(payload);
+
+      var res, data;
+      try {
+        res = await fetch("/api/decide", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: body,
+        });
+        data = await res.json();
+      } catch (err) {
+        setBusy(false);
+        return fail(
+          "The live endpoint is not reachable from here.",
+          "This section needs the deployed site — it calls a server function. Everything else on this page is replayed from committed decisions and works offline."
+        );
+      }
+      setBusy(false);
+
+      /* The gate needs no credential and no network. When the model half
+         fails, the endpoint still returns what the engine decided, so show
+         that rather than throwing away the useful half. */
+      if (!res.ok) {
+        if (!Array.isArray(data.permitted)) {
+          return fail(
+            data.error || "That did not work.",
+            data.detail && !Array.isArray(data.detail) ? data.detail : data.hint || null,
+            Array.isArray(data.detail) ? data.detail : null
+          );
+        }
+      }
+      render(data, what, res.ok ? null : data);
+    }
+
+    function render(d, what, err) {
+      var permitted = {};
+      (d.permitted || []).forEach(function (p) { permitted[p] = true; });
+
+      var blocked = {}, chan = {};
+      (d.excluded || []).forEach(function (x) {
+        var a = x.action_type || x.action;
+        if (x.channel === null || x.channel === undefined) { if (!blocked[a]) blocked[a] = x; }
+        else { (chan[a] = chan[a] || []).push(x); }
+      });
+
+      var chose = d.decision && d.decision.action;
+      var nRef = 0;
+
+      var rows = LADDER.map(function (row) {
+        var rung = row[0], name = row[1];
+        var isChosen = chose && chose.type === name;
+        var isPermitted = !!permitted[name];
+        var cls = "rung", why = "";
+
+        if (isChosen) {
+          cls += " is-chosen";
+          why = "<b>chosen</b> — " + (describe(chose) || "no parameters");
+        } else if (isPermitted) {
+          cls += " is-permitted";
+          var c = chan[name];
+          if (c && c.length) {
+            var g = {};
+            c.forEach(function (x) { (g[x.rule_id || x.rule] = g[x.rule_id || x.rule] || []).push(x.channel); });
+            why = Object.keys(g).map(function (r) { return "<b>" + r + "</b> closes " + g[r].join(", "); }).join(" · ");
+          } else { why = "<b>permitted</b>"; }
+        } else {
+          cls += " is-refused";
+          nRef += 1;
+          var b = blocked[name] || (chan[name] || [])[0];
+          why = b ? "<b>" + (b.rule_id || b.rule) + "</b> — " + esc(b.detail) : "<b>not available at this rung</b>";
+        }
+
+        return '<div class="' + cls + '">' +
+          '<span class="rung-n">' + rung + "</span>" +
+          '<span class="rung-name">' + name + (isChosen ? '<span class="rung-tag">chose</span>' : "") + "</span>" +
+          '<span class="rung-why">' + why + "</span></div>";
+      }).join("");
+
+      var head = '<div class="live-head">' +
+        "<b>" + esc(d.case_id) + "</b>" +
+        "<span>" + (d.permitted || []).length + " permitted · " + nRef + " refused</span>" +
+        (d.model ? "<span>" + esc(d.model) + "</span>" : "") +
+        (d.latency_ms ? "<span>" + Math.round(d.latency_ms) + " ms</span>" : "") +
+        '<span class="tag-live">live</span></div>';
+
+      var body = "";
+      if (err) {
+        body += '<div class="live-err" style="margin-bottom:1.25rem"><b>' + esc(err.error || "The model half did not run.") + "</b>" +
+          (err.detail ? "<p>" + esc(err.detail) + "</p>" : "") +
+          "<p>The permitted set below is real — the engine computed it with no model and no network.</p></div>";
+      }
+      if (d.stop) {
+        body = '<div class="live-err" style="border-left-color:var(--patina);background:var(--patina-wash)">' +
+          '<b style="color:var(--patina)">' + esc(d.stop.rule_id) + " fired</b>" +
+          "<p>" + esc(d.stop.detail) + " The engine closed the case, so the model was never asked. No call was made.</p></div>";
+      } else if (d.decision) {
+        body = '<div class="gate-verdict" style="margin-bottom:1.1rem">' +
+          "<h4>What it chose</h4>" +
+          '<p class="gate-said">' + esc(chose.type.replace(/_/g, " ")) + "</p>" +
+          "</div>" +
+          '<div class="gate-verdict" style="margin-bottom:1.25rem"><h4>Why it said it chose it</h4><p>' +
+          esc(d.decision.rationale || d.decision.diagnosis || "") + "</p></div>";
+        if (d.decision.outside_permitted_set) {
+          body = '<div class="live-err"><b>The model chose outside the permitted set.</b>' +
+            "<p>This is reported, never executed. It has not happened in 12,738 recorded decisions.</p></div>" + body;
+        }
+      }
+
+      out.innerHTML = head + body + '<div class="ladder">' + rows + "</div>" +
+        (d.note ? '<p class="live-note">' + esc(d.note) + "</p>" : "") +
+        '<p class="live-note">One decision, made just now. No outcome is simulated — nothing here says whether it would have worked.</p>';
+    }
+  })();
 
   /* ======================================================================
      LEDGER TABLE

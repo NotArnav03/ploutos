@@ -1,0 +1,83 @@
+{
+  "case_id": "CASE-00001",
+  "customer": {
+    "id": "CUST-00001",
+    "segment": "smb",
+    "tenure_months": 15,
+    "ltv_paise": 7498500,
+    "prior_failures": 3,
+    "prior_recoveries": 1,
+    "state": "Karnataka",
+    "language_pref": "en",
+    "channels": {
+      "sms": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      },
+      "email": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      },
+      "whatsapp": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      },
+      "inapp": {
+        "reachable": true,
+        "consent": true,
+        "dnd": false
+      }
+    }
+  },
+  "subscription": {
+    "id": "SUB-00001",
+    "customer_id": "CUST-00001",
+    "plan": {
+      "amount_paise": 499900,
+      "interval": "monthly"
+    },
+    "rail": "upi_autopay",
+    "mandate": {
+      "ref": "MND-00001",
+      "status": "active",
+      "max_amount_paise": 1499700,
+      "valid_till": "2027-09-13T00:00:00.000Z",
+      "created_at": "2024-03-07T00:00:00.000Z",
+      "afa_required": false,
+      "last_predebit_notice_at": "2026-08-03T18:00:00.000Z"
+    },
+    "started_at": "2025-05-08T00:00:00.000Z",
+    "cycles_completed": 15,
+    "alternate_rails": []
+  },
+  "invoice": {
+    "id": "INV-00001",
+    "subscription_id": "SUB-00001",
+    "customer_id": "CUST-00001",
+    "amount_paise": 499900,
+    "due_date": "2026-08-05T12:00:00.000Z",
+    "status": "failed",
+    "first_failed_at": "2026-08-05T12:00:00.000Z",
+    "attempts": [
+      {
+        "id": "ATT-00001-1",
+        "invoice_id": "INV-00001",
+        "seq": 1,
+        "ts": "2026-08-05T12:00:00.000Z",
+        "rail": "upi_autopay",
+        "amount_paise": 499900,
+        "code": "TXN_TIMEOUT",
+        "class": "soft",
+        "remedy": "retime",
+        "succeeded": false,
+        "retry_allowed_after": "2026-08-05T14:00:00.000Z",
+        "description": "Transaction timeout"
+      }
+    ],
+    "contacts": [],
+    "promises": []
+  }
+}

@@ -159,7 +159,7 @@ Full walkthrough, with sequence diagrams and the enforcement points: [docs/ARCHI
 
 ```bash
 npm run eval                        # the table above, ~2s, no API key
-npm test                            # 166 tests
+npm test                            # 171 tests
 ```
 
 Every figure comes from `results/checkpoint-main-s42-agent-v1/`, committed in
@@ -213,6 +213,30 @@ engine permitted at each step, **which rule refused each thing it did not**,
 what the model chose, and the rationale it gave. Those are recorded Gemini
 decisions, not live calls. The page never contacts a model, holds no
 credential, and renders identically offline.
+
+### The live decision endpoint
+
+`api/decide.ts` is the one thing on the site that is not a replay. Upload a case
+record, or run one of the samples, and it runs the **real gate** and makes **one
+real model call**: the permitted set, the rule id that refused each excluded
+action, and the model's choice with the rationale it wrote.
+
+It stops after one decision, deliberately. A case record carries a `latent`
+block — the ground truth the simulator uses to answer an action — and without it
+there is nothing to say whether a retry would have succeeded. Generating one
+would mean inventing the outcome and reporting it as a result, so `latent` is
+stripped on the way in and no outcome is ever simulated.
+
+The gate half needs no credential and no network, so when the model half cannot
+run — no key, quota gone — the endpoint still returns the permitted set and says
+which half failed.
+
+**None of this is in the measured path.** `tests/boundary.test.ts` fails the
+build if `src/eval`, `src/policy`, `src/agent` or `src/domain` imports `api/`,
+and if `api/` imports `src/world`. A number this project reports can never come
+to depend on a key being present, and the endpoint decides from the uploaded
+record alone. Enabling it needs `GEMINI_API_KEY` set in the Vercel project
+environment, server side; it is never sent to the browser.
 
 `web/dist/index.html` and `web/artifact.html` are generated and committed so
 the site can be served without running the build; `web/index.template.html` is

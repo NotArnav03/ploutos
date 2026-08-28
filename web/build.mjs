@@ -131,8 +131,38 @@ const codes = taxonomy.codes.map((c) => ({
   remedy: c.remedy ?? null,
 }));
 
+// ---- samples for the live decision endpoint ------------------------------
+// Embedded in the page as well as copied into dist, so someone can run one
+// without hunting for a file first. Ground truth was stripped when these were
+// cut from data/batches: an uploader never needs it and must never see it.
+const SAMPLES = [
+  {
+    file: 'afa-blocked.json',
+    label: 'Authentication required',
+    note: 'A ₹19,369 debit on card-on-file. Over the ₹15,000 AFA threshold, so the gate refuses a presentment outright.',
+  },
+  {
+    file: 'insufficient-funds.json',
+    label: 'Transaction timeout',
+    note: 'A ₹4,999 UPI Autopay debit that timed out. Retryable, but the minimum gap has not elapsed.',
+  },
+  {
+    file: 'mandate-capped.json',
+    label: 'Over the mandate cap',
+    note: 'A ₹24,999 invoice against a mandate authorised for less. No retry can ever succeed.',
+  },
+];
+
+const samples = SAMPLES.map((s) => {
+  const record = JSON.parse(readFileSync(`web/samples/${s.file}`, 'utf8'));
+  if (JSON.stringify(record).includes('latent')) {
+    throw new Error(`${s.file} still carries ground truth`);
+  }
+  return { ...s, record };
+});
+
 // ---- emit ----------------------------------------------------------------
-const payload = { run, policies, paired, gate: { case: caseMeta, steps }, rules, codes };
+const payload = { run, policies, paired, gate: { case: caseMeta, steps }, rules, codes, samples };
 
 // `<` is escaped so the payload can never close the script element early.
 const json = JSON.stringify(payload).split('<').join('\\u003c');
@@ -153,6 +183,12 @@ const shellOpen = [
 mkdirSync('web/dist', { recursive: true });
 writeFileSync('web/dist/index.html', shellOpen + inner + '\n</html>\n');
 writeFileSync('web/artifact.html', inner);
+
+// the same records, downloadable, so an upload can start from a valid file
+mkdirSync('web/dist/samples', { recursive: true });
+for (const s of samples) {
+  writeFileSync(`web/dist/samples/${s.file}`, JSON.stringify(s.record, null, 2) + '\n');
+}
 
 const kb = (s) => (s.length / 1024).toFixed(1) + ' KB';
 process.stderr.write(

@@ -52,6 +52,13 @@ The project site: the problem, the policy gate walked step by step over
 `CASE-00005`, the results table, the paired comparison, and the rules registry
 with its verification statuses.
 
+Section III is live. Upload a case record — or run one of the three samples —
+and it runs the real gate and makes one real model call, showing the permitted
+set, the rule that refused everything else, and the model's own reasoning. It
+stops after one decision rather than simulating an outcome it has no ground
+truth for. `tests/boundary.test.ts` fails the build if the measured path can
+reach that endpoint.
+
 `node web/build.mjs` regenerates it from `results/checkpoint-main-s42-agent-v1`
 on every push, so the page cannot drift from the run it reports. There is no
 backend, no credential, and no model call at page load — the decisions it shows
@@ -209,7 +216,7 @@ npm run replay -- --run results/checkpoint-main-s42-agent-v1 --case CASE-00005
 
 Verified 27 Aug 2026, re-checked 28 Aug 2026:
 
-- [x] `npm test` green (**166 passed**), `npm run typecheck` clean
+- [x] `npm test` green (**171 passed**), `npm run typecheck` clean
 - [x] `npm run eval` reproduces the README table — **2,736 cached, 0 live calls**
 - [x] `npm run replay -- --verify` — **all chains verified across 33,768 events**
 - [x] No API key committed — `.env` is gitignored, `.env.example` values empty,
@@ -229,5 +236,8 @@ Still to do:
 - [ ] **Repo made public** — still private 28 Aug 2026, and it blocks everything
       a judge needs to check
 - [ ] README renders; mermaid diagrams render on GitHub (needs public first)
+- [ ] `GEMINI_API_KEY` set in the Vercel project environment, so the live
+      decision in section III works. Without it the gate still runs and the
+      page says which half did not
 - [ ] Video recorded, under 5:00, link added above
 - [ ] Form fields pasted from this document
