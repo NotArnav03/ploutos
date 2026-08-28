@@ -7,9 +7,9 @@
 // page follows.
 //
 // Writes two files from one template:
-//   web/index.html    a standalone document, opens straight from disk
-//   web/artifact.html the same content without the outer shell, for publishing
-import { readFileSync, writeFileSync } from 'node:fs';
+//   web/dist/index.html  a standalone document; this directory is what deploys
+//   web/artifact.html    the same content without the outer shell, for publishing
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { parse as parseYaml } from 'yaml';
 
@@ -150,11 +150,12 @@ const shellOpen = [
   '',
 ].join('\n');
 
-writeFileSync('web/index.html', shellOpen + inner + '\n</html>\n');
+mkdirSync('web/dist', { recursive: true });
+writeFileSync('web/dist/index.html', shellOpen + inner + '\n</html>\n');
 writeFileSync('web/artifact.html', inner);
 
 const kb = (s) => (s.length / 1024).toFixed(1) + ' KB';
 process.stderr.write(
-  `web/index.html + web/artifact.html written from ${RUN}\n` +
+  `web/dist/index.html + web/artifact.html written from ${RUN}\n` +
     `  payload ${kb(json)} · ${steps.length} gate steps · ${deltas.length} differing cases · ${rules.length} rules\n`,
 );

@@ -198,7 +198,7 @@ gate walked step by step over a real case, the results table, the paired
 comparison, and the rules registry.
 
 ```bash
-npm run site:build      # regenerate web/index.html from the committed run
+npm run site:build      # regenerate web/dist/index.html from the committed run
 npm run site            # http://localhost:5173
 ```
 
@@ -214,9 +214,13 @@ what the model chose, and the rationale it gave. Those are recorded Gemini
 decisions, not live calls. The page never contacts a model, holds no
 credential, and renders identically offline.
 
-`web/index.html` and `web/artifact.html` are generated and committed so the
-site can be served without running the build; `web/index.template.html` is the
-source.
+`web/dist/index.html` and `web/artifact.html` are generated and committed so
+the site can be served without running the build; `web/index.template.html` is
+the source.
+
+Deployed on Vercel from `vercel.json`: it runs `node web/build.mjs` on every
+push and serves `web/dist`, so the deployed page is rebuilt from the committed
+run rather than from whatever HTML happened to be checked in.
 
 ## Razorpay test-mode adapter
 
