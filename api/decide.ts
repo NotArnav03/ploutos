@@ -225,10 +225,18 @@ export async function decide(req: Request): Promise<Response> {
   // noCache + a cache pointed at a directory that does not exist: nothing is
   // replayed from the committed decisions, and nothing is written into them.
   // flush() is never called, so this cannot touch .cache/llm.
+  //
+  // LIVE_MODEL exists because the model the committed run used can be busy or
+  // unavailable, and that must not be the difference between a working demo
+  // and a dead one. It defaults to the run's own model, and whichever answered
+  // is reported in the response, so the page can never imply the live call used
+  // the same model as the measured run when it did not.
+  const liveModel = process.env['LIVE_MODEL'];
   const agent = makeAgent({
     noCache: true,
     allowFallback: false,
     cache: new DecisionCache('/tmp/ploutos-live-nocache'),
+    ...(liveModel ? { model: liveModel } : {}),
   });
 
   // A deadline of our own.
@@ -308,6 +316,10 @@ export async function decide(req: Request): Promise<Response> {
         note,
         error: 'The gate ran. The model did not answer, so there is no decision to show.',
         detail: err instanceof Error ? err.message : String(err),
+        // What the provider last saw. Without this, a deadline of our own
+        // masks the upstream cause and the failure is undiagnosable.
+        upstream: agent.stats.last_error,
+        attempted_model: liveModel ?? null,
       },
       502,
     );
